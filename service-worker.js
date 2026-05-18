@@ -1,4 +1,4 @@
-const CACHE_NAME = 'electronic-kitchen-kawaii-v3'
+const CACHE_NAME = 'electronic-kitchen-kawaii-v6'
 const ASSETS = [
   './',
   './index.html',

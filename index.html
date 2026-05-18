@@ -19,9 +19,8 @@
       <header class="app-header">
         <div class="brand">
           <img src="./assets/home-badge.png" alt="" />
-          <div>
-            <p class="eyebrow">本地电子菜单</p>
-            <h1>电子厨房</h1>
+          <div class="brand-title-wrap">
+            <input id="appTitleInput" class="app-title-input" value="电子厨房" aria-label="菜单名称" maxlength="12" />
           </div>
         </div>
         <button id="addDishTop" class="primary-button">新增菜品</button>
@@ -141,6 +140,40 @@
         <div class="dialog-actions">
           <button id="deleteDish" type="button" class="danger-button is-hidden">删除</button>
           <button type="submit" class="primary-button">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="reviewDialog" class="review-dialog">
+      <form id="reviewForm" method="dialog">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">用餐评价</p>
+            <h2 id="reviewDishName">评价这道菜</h2>
+          </div>
+          <button type="button" id="closeReviewDialog" class="icon-button" aria-label="关闭">×</button>
+        </div>
+
+        <input id="reviewRating" type="hidden" value="5" />
+
+        <div class="rating-field">
+          <span>评分</span>
+          <div class="star-picker" aria-label="五颗星评分">
+            <button type="button" data-star="1">★</button>
+            <button type="button" data-star="2">★</button>
+            <button type="button" data-star="3">★</button>
+            <button type="button" data-star="4">★</button>
+            <button type="button" data-star="5">★</button>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>评论</span>
+          <textarea id="reviewComment" rows="4" placeholder="例如：今天火候刚好，下次可以少放一点盐"></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button type="submit" class="primary-button">保存评价</button>
         </div>
       </form>
     </dialog>

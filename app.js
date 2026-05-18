@@ -1,5 +1,6 @@
 const DB_NAME = 'electronic-kitchen-local'
 const DB_VERSION = 1
+const TITLE_KEY = 'electronic-kitchen-title'
 const STORES = {
   dishes: 'dishes',
   checkins: 'checkins'
@@ -22,6 +23,7 @@ const state = {
 const els = {
   addDishBottom: document.querySelector('#addDishBottom'),
   addDishTop: document.querySelector('#addDishTop'),
+  appTitleInput: document.querySelector('#appTitleInput'),
   checkinDate: document.querySelector('#checkinDate'),
   closeDialog: document.querySelector('#closeDialog'),
   deleteDish: document.querySelector('#deleteDish'),
@@ -44,6 +46,12 @@ const els = {
   recommendation: document.querySelector('#recommendation'),
   recordDate: document.querySelector('#recordDate'),
   recordsList: document.querySelector('#recordsList'),
+  closeReviewDialog: document.querySelector('#closeReviewDialog'),
+  reviewComment: document.querySelector('#reviewComment'),
+  reviewDialog: document.querySelector('#reviewDialog'),
+  reviewDishName: document.querySelector('#reviewDishName'),
+  reviewForm: document.querySelector('#reviewForm'),
+  reviewRating: document.querySelector('#reviewRating'),
   searchInput: document.querySelector('#searchInput'),
   toast: document.querySelector('#toast'),
   todayText: document.querySelector('#todayText')
@@ -51,6 +59,7 @@ const els = {
 
 let db
 let pendingImageData = ''
+let pendingReview = null
 let toastTimer
 
 init()
@@ -59,6 +68,7 @@ async function init() {
   db = await openDatabase()
   await seedIfEmpty()
   bindEvents()
+  loadAppTitle()
   syncSelectedDate(state.recordDate)
   await refresh()
 
@@ -74,6 +84,8 @@ function bindEvents() {
   els.dishForm.addEventListener('submit', saveDishFromForm)
   els.deleteDish.addEventListener('click', deleteCurrentDish)
   els.dishImage.addEventListener('change', handleImagePick)
+  els.closeReviewDialog.addEventListener('click', () => els.reviewDialog.close())
+  els.reviewForm.addEventListener('submit', saveReview)
   els.searchInput.addEventListener('input', (event) => {
     state.keyword = event.target.value.trim().toLowerCase()
     renderDishes()
@@ -83,6 +95,17 @@ function bindEvents() {
   els.recordDate.addEventListener('change', () => setSelectedDate(els.recordDate.value))
   els.exportData.addEventListener('click', exportData)
   els.importData.addEventListener('change', importData)
+  els.appTitleInput.addEventListener('input', updateAppTitle)
+  els.appTitleInput.addEventListener('blur', () => {
+    if (!els.appTitleInput.value.trim()) {
+      els.appTitleInput.value = '电子厨房'
+      updateAppTitle()
+    }
+  })
+
+  document.querySelectorAll('[data-star]').forEach((button) => {
+    button.addEventListener('click', () => setRating(Number(button.dataset.star)))
+  })
 
   document.querySelectorAll('.meal-tab').forEach((button) => {
     button.addEventListener('click', () => {
@@ -100,6 +123,22 @@ function bindEvents() {
       document.querySelectorAll('[data-jump]').forEach((item) => item.classList.toggle('is-active', item === button))
     })
   })
+}
+
+function loadAppTitle() {
+  els.appTitleInput.value = localStorage.getItem(TITLE_KEY) || '电子厨房'
+  updateDocumentTitle()
+}
+
+function updateAppTitle() {
+  const title = els.appTitleInput.value.trim()
+  localStorage.setItem(TITLE_KEY, title || '电子厨房')
+  updateDocumentTitle()
+}
+
+function updateDocumentTitle() {
+  const title = els.appTitleInput.value.trim() || '电子厨房'
+  document.title = title
 }
 
 async function refresh() {
@@ -296,20 +335,29 @@ function renderRecords() {
   els.recordsList.querySelectorAll('[data-delete-record]').forEach((button) => {
     button.addEventListener('click', () => deleteCheckin(button.dataset.deleteRecord))
   })
+  els.recordsList.querySelectorAll('[data-review-record]').forEach((button) => {
+    button.addEventListener('click', () => openReviewDialogForRecord(button.dataset.reviewRecord))
+  })
 }
 
 function recordItem(record) {
   const image = record.imageData
     ? `<img class="record-thumb" src="${record.imageData}" alt="" />`
     : '<div class="record-thumb"></div>'
+  const rating = Number(record.rating || 0)
+  const comment = record.comment ? `<div class="record-comment">${escapeHtml(record.comment)}</div>` : ''
   return `
     <div class="record-item">
       ${image}
       <div class="record-main">
         <div class="record-name">${escapeHtml(record.dishName)}</div>
-        <div class="record-time">${new Date(record.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</div>
+        <div class="record-rating">${rating ? starsText(rating) : '未评价'}</div>
+        ${comment}
       </div>
-      <button class="record-delete" data-delete-record="${record.id}" aria-label="删除${escapeHtml(record.dishName)}的打卡记录">删除</button>
+      <div class="record-actions">
+        <button class="record-review" data-review-record="${record.id}">${rating ? '修改' : '评价'}</button>
+        <button class="record-delete" data-delete-record="${record.id}" aria-label="删除${escapeHtml(record.dishName)}的打卡记录">删除</button>
+      </div>
     </div>
   `
 }
@@ -388,7 +436,7 @@ async function deleteCurrentDish() {
   await refresh()
 }
 
-async function checkin(dishId) {
+function checkin(dishId) {
   const dish = state.dishes.find((item) => item.id === dishId)
   if (!dish) return
 
@@ -397,6 +445,42 @@ async function checkin(dishId) {
   const dateText = isToday(checkinDate) ? '今天' : prettyDate(checkinDate)
   if (duplicated && !confirm(`${dateText}这个餐次已经记录过这道菜，还要再记一次吗？`)) return
 
+  pendingReview = {
+    mode: 'create',
+    dishId: dish.id,
+    date: checkinDate
+  }
+  els.reviewDishName.textContent = `评价：${dish.name}`
+  els.reviewComment.value = ''
+  setRating(5)
+  els.reviewDialog.showModal()
+}
+
+async function saveReview(event) {
+  event.preventDefault()
+  if (!pendingReview) return
+
+  if (pendingReview.mode === 'edit') {
+    const record = state.checkins.find((item) => item.id === pendingReview.recordId)
+    if (!record) return
+    await put(STORES.checkins, {
+      ...record,
+      rating: Number(els.reviewRating.value),
+      comment: els.reviewComment.value.trim(),
+      updatedAt: new Date().toISOString()
+    })
+    els.reviewDialog.close()
+    pendingReview = null
+    showToast('评价已更新')
+    await refresh()
+    return
+  }
+
+  const dish = state.dishes.find((item) => item.id === pendingReview.dishId)
+  if (!dish) return
+  const checkinDate = pendingReview.date
+  const dateText = isToday(checkinDate) ? '今天' : prettyDate(checkinDate)
+
   await put(STORES.checkins, {
     id: crypto.randomUUID(),
     dishId: dish.id,
@@ -404,12 +488,42 @@ async function checkin(dishId) {
     imageData: dish.imageData || '',
     mealType: state.activeMeal,
     date: checkinDate,
+    rating: Number(els.reviewRating.value),
+    comment: els.reviewComment.value.trim(),
     createdAt: new Date().toISOString()
   })
 
+  els.reviewDialog.close()
+  pendingReview = null
   syncSelectedDate(checkinDate)
   showToast(`已记为${dateText}${mealLabel(state.activeMeal)}`)
   await refresh()
+}
+
+function openReviewDialogForRecord(id) {
+  const record = state.checkins.find((item) => item.id === id)
+  if (!record) return
+  pendingReview = {
+    mode: 'edit',
+    recordId: record.id
+  }
+  els.reviewDishName.textContent = `评价：${record.dishName}`
+  els.reviewComment.value = record.comment || ''
+  setRating(Number(record.rating || 5))
+  els.reviewDialog.showModal()
+}
+
+function setRating(value) {
+  const rating = Math.min(5, Math.max(1, value || 5))
+  els.reviewRating.value = String(rating)
+  document.querySelectorAll('[data-star]').forEach((button) => {
+    button.classList.toggle('is-active', Number(button.dataset.star) <= rating)
+  })
+}
+
+function starsText(value) {
+  const rating = Math.min(5, Math.max(0, Number(value) || 0))
+  return `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`
 }
 
 function randomPick() {

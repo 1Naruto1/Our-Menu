@@ -106,8 +106,9 @@ main,
 }
 
 .brand {
+  min-height: 98px;
   justify-content: flex-start;
-  padding: 12px 18px 12px 12px;
+  padding: 12px 18px 12px 14px;
   background: rgba(255, 253, 251, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 8px;
@@ -116,10 +117,36 @@ main,
 }
 
 .brand img {
+  align-self: center;
   width: 72px;
   height: 72px;
   object-fit: contain;
   filter: drop-shadow(0 8px 14px rgba(139, 83, 79, 0.14));
+}
+
+.brand-title-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.app-title-input {
+  width: min(42vw, 360px);
+  min-width: 160px;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  outline: 0;
+  font-size: clamp(38px, 5vw, 50px);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+.app-title-input:focus {
+  border-bottom-color: rgba(223, 126, 146, 0.42);
 }
 
 .eyebrow {
@@ -349,7 +376,7 @@ h2 {
 .dish-photo,
 .dish-placeholder {
   width: 100%;
-  height: 128px;
+  height: clamp(178px, 15vw, 230px);
   object-fit: cover;
   background: #f1decf;
 }
@@ -523,15 +550,49 @@ h2 {
   white-space: nowrap;
 }
 
-.record-delete {
+.record-rating {
+  color: #d6893f;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.record-comment {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.record-actions {
+  display: flex;
   flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.record-review,
+.record-delete {
   min-height: 32px;
   padding: 0 10px;
-  color: #b24636;
-  background: #ffe1dc;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 900;
+}
+
+.record-review {
+  color: #8b6070;
+  background: var(--pink-soft);
+}
+
+.record-delete {
+  color: #b24636;
+  background: #ffe1dc;
 }
 
 .record-time,
@@ -551,7 +612,8 @@ h2 {
   border-radius: 8px;
 }
 
-.dish-dialog {
+.dish-dialog,
+.review-dialog {
   width: min(680px, calc(100% - 32px));
   max-height: calc(100dvh - 32px);
   padding: 0;
@@ -561,12 +623,44 @@ h2 {
   box-shadow: 0 28px 70px rgba(70, 41, 30, 0.28);
 }
 
-.dish-dialog::backdrop {
+.dish-dialog::backdrop,
+.review-dialog::backdrop {
   background: rgba(52, 41, 35, 0.34);
 }
 
-.dish-dialog form {
+.dish-dialog form,
+.review-dialog form {
   padding: 24px;
+}
+
+.rating-field {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.star-picker {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.star-picker button {
+  min-height: 52px;
+  color: #c5a077;
+  background: #fff4df;
+  border: 1px solid rgba(239, 207, 126, 0.72);
+  border-radius: 8px;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.star-picker button.is-active {
+  color: #d6893f;
+  background: var(--yellow);
 }
 
 .icon-button {
@@ -715,6 +809,11 @@ h2 {
   .dish-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .dish-photo,
+  .dish-placeholder {
+    height: clamp(210px, 28vw, 290px);
+  }
 }
 
 @media (max-width: 720px) {
@@ -739,11 +838,18 @@ h2 {
 
   .brand {
     padding: 10px;
+    min-height: 78px;
   }
 
   .brand img {
     width: 58px;
     height: 58px;
+  }
+
+  .app-title-input {
+    width: 100%;
+    min-width: 0;
+    font-size: 36px;
   }
 
   .app-header .primary-button {
@@ -773,6 +879,11 @@ h2 {
   .dish-grid,
   .records-list {
     grid-template-columns: 1fr;
+  }
+
+  .dish-photo,
+  .dish-placeholder {
+    height: clamp(220px, 58vw, 320px);
   }
 
   .bottom-bar {
