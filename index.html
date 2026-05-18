@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="电子厨房" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#f7f2e8" />
+    <title>电子厨房</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./assets/icon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app" class="shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">本地电子菜单</p>
+          <h1>电子厨房</h1>
+        </div>
+        <button id="addDishTop" class="primary-button">新增菜品</button>
+      </header>
+
+      <main>
+        <section class="today-panel">
+          <div class="today-copy">
+            <p id="todayText" class="eyebrow"></p>
+            <h2 id="mealTitle">今天吃什么</h2>
+          </div>
+          <div class="meal-tabs" role="tablist" aria-label="餐次">
+            <button class="meal-tab is-active" data-meal="breakfast">早餐</button>
+            <button class="meal-tab" data-meal="lunch">午餐</button>
+            <button class="meal-tab" data-meal="dinner">晚餐</button>
+          </div>
+        </section>
+
+        <section class="toolbar">
+          <label class="search-box">
+            <span>搜索</span>
+            <input id="searchInput" type="search" placeholder="菜名、食材、标签" autocomplete="off" />
+          </label>
+          <button id="randomPick" class="secondary-button">随机点菜</button>
+          <button id="exportData" class="secondary-button">导出备份</button>
+          <label class="secondary-button file-button">
+            导入备份
+            <input id="importData" type="file" accept="application/json" />
+          </label>
+        </section>
+
+        <section id="recommendation" class="recommendation is-hidden" aria-live="polite"></section>
+
+        <section id="dishGrid" class="dish-grid"></section>
+
+        <section class="records-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">打卡记录</p>
+              <h2>按日期查看</h2>
+            </div>
+            <input id="recordDate" class="date-input" type="date" />
+          </div>
+          <div id="recordsList" class="records-list"></div>
+        </section>
+      </main>
+
+      <nav class="bottom-bar" aria-label="快速操作">
+        <button data-jump="menu" class="bottom-action is-active">菜单</button>
+        <button data-jump="records" class="bottom-action">记录</button>
+        <button id="addDishBottom" class="bottom-action accent">新增</button>
+      </nav>
+    </div>
+
+    <dialog id="dishDialog" class="dish-dialog">
+      <form id="dishForm" method="dialog">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">菜品资料</p>
+            <h2 id="dialogTitle">新增菜品</h2>
+          </div>
+          <button type="button" id="closeDialog" class="icon-button" aria-label="关闭">×</button>
+        </div>
+
+        <input id="dishId" type="hidden" />
+
+        <label class="image-picker">
+          <img id="imagePreview" alt="" />
+          <span id="imageHint">选择菜品图片</span>
+          <input id="dishImage" type="file" accept="image/*" />
+        </label>
+
+        <label class="field">
+          <span>菜名</span>
+          <input id="dishName" required placeholder="例如：番茄炒蛋" />
+        </label>
+
+        <label class="field">
+          <span>主要食材</span>
+          <input id="dishIngredients" placeholder="用顿号或逗号分隔，例如：番茄、鸡蛋" />
+        </label>
+
+        <label class="field">
+          <span>分类 / 标签</span>
+          <input id="dishCategory" placeholder="例如：家常菜、快手、清淡" />
+        </label>
+
+        <fieldset class="meal-field">
+          <legend>适合餐次</legend>
+          <label><input type="checkbox" name="mealType" value="breakfast" />早餐</label>
+          <label><input type="checkbox" name="mealType" value="lunch" checked />午餐</label>
+          <label><input type="checkbox" name="mealType" value="dinner" checked />晚餐</label>
+        </fieldset>
+
+        <label class="field">
+          <span>备注</span>
+          <textarea id="dishNote" rows="3" placeholder="口味、做法提示、家人偏好等"></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button id="deleteDish" type="button" class="danger-button is-hidden">删除</button>
+          <button type="submit" class="primary-button">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

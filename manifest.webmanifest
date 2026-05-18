@@ -1,0 +1,18 @@
+{
+  "name": "电子厨房",
+  "short_name": "电子厨房",
+  "description": "纯本地 iPad 电子菜单，支持菜品、图片、三餐打卡和备份。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f2e8",
+  "theme_color": "#f7f2e8",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
