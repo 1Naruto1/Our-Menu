@@ -1,144 +1,84 @@
-# 电子厨房 iPad 本地版使用说明
+# 电子厨房新版 PWA
 
-这是一个网页形式的小 App。它不需要微信、不需要服务器数据库，菜品、图片和打卡记录都保存在当前 iPad 的 Safari 本地数据里。
+这是新版 iPad / iPhone 本地电子菜单。它是纯前端 PWA，不需要微信、不需要服务器数据库。
 
-## 先说结论
+## 当前版本
 
-iPad 不能像电脑一样直接把一个文件夹“安装成程序”。正确做法是：
+这一版使用：
 
-1. 把 `ipad-local` 这个网页文件夹放到一个能访问的网址上。
-2. 用 iPad 的 Safari 打开这个网址。
-3. 点 Safari 分享按钮。
-4. 选择“添加到主屏幕”。
-5. 以后从主屏幕打开“电子厨房”。
+- 顶部横向可爱背景图
+- 早餐 / 午餐 / 晚餐图标切换
+- 每张菜只保留一个当前餐次打卡按钮
+- 菜品编辑按钮
+- 本地 IndexedDB 保存菜品、图片和打卡记录
+- JSON 导入 / 导出备份
 
-## 需要部署哪些文件
+## 需要上传到 GitHub 的文件
 
-必须保留并部署整个 `ipad-local` 文件夹里的这些文件：
+如果你想用这个新版替换 GitHub Pages 当前网页，请把 `electronic-kitchen-app` 文件夹里的内容上传到仓库根目录。
 
-```text
-ipad-local/index.html
-ipad-local/styles.css
-ipad-local/app.js
-ipad-local/manifest.webmanifest
-ipad-local/service-worker.js
-ipad-local/assets/icon.svg
-```
-
-这些文件要放在同一个目录结构里，不要只上传 `index.html`。
-
-可选文件：
+仓库根目录最终应该类似：
 
 ```text
-ipad-local/README.md
-ipad-local/preview.png
+assets/
+app.js
+index.html
+manifest.webmanifest
+README.md
+service-worker.js
+styles.css
 ```
 
-它们只是说明和预览图，不影响电子菜单运行。
-
-## 方式一：在电脑上临时预览
-
-适合先试用，不适合长期放在 iPad 上。
-
-在电脑终端运行：
-
-```bash
-cd "/Users/linfeng/Desktop/Coding/App Menu"
-python3 -m http.server 4173
-```
-
-电脑浏览器打开：
+`assets/` 里至少要有：
 
 ```text
-http://localhost:4173/ipad-local/
+icon.svg
+kawaii-bg.png
+home-badge.png
+rabbit-spatula.png
+tiger-chef.png
+dinner-badge.png
 ```
 
-如果 iPad 和电脑在同一个 Wi-Fi 下，也可以用 iPad 打开：
+不要只上传 `index.html`，也不要漏掉 `assets` 文件夹。
+
+## GitHub 网页端更新方式
+
+1. 打开你的 GitHub 仓库。
+2. 删除或覆盖旧的这些文件：
 
 ```text
-http://电脑局域网IP:4173/ipad-local/
+assets/
+app.js
+index.html
+manifest.webmanifest
+service-worker.js
+styles.css
+README.md
 ```
 
-例如：
+3. 点击 `Add file`。
+4. 点击 `Upload files`。
+5. 把 `electronic-kitchen-app` 文件夹里面的所有内容拖进去。
+6. 页面底部点击 `Commit changes`。
+7. 等 GitHub Pages 自动部署完成。
+
+## iPhone / iPad 更新后看不到新界面怎么办
+
+这是 PWA 缓存导致的。可以按顺序处理：
+
+1. 等 GitHub Pages 部署完成。
+2. Safari 打开你的 GitHub Pages 地址。
+3. 在网址后面加版本参数，例如：
 
 ```text
-http://192.168.1.23:4173/ipad-local/
+?v=2
 ```
 
-注意：这种方式要求电脑一直开着，终端里的服务器也要一直运行。电脑关了，iPad 就打不开。
+4. 还不更新的话，删除主屏幕上的旧“电子厨房”，再从 Safari 重新添加到主屏幕。
 
-## 方式二：长期使用，推荐
+## 数据提醒
 
-把 `ipad-local` 文件夹部署到免费的静态网站服务，比如：
+这个版本的数据仍然保存在当前设备本地。更新网页文件不会自动同步电脑和手机里的菜单数据。
 
-- GitHub Pages
-- Cloudflare Pages
-- 自己家里的 NAS 网页目录
-
-部署完成后你会得到一个网址，比如：
-
-```text
-https://你的域名/electronic-kitchen/
-```
-
-然后在 iPad 上：
-
-1. 打开 Safari。
-2. 输入这个网址。
-3. 确认页面能正常显示“电子厨房”。
-4. 点 Safari 顶部或底部的分享按钮。
-5. 选择“添加到主屏幕”。
-6. 名称填“电子厨房”。
-7. 点“添加”。
-
-之后 iPad 主屏幕上会出现一个“电子厨房”图标，点它就能启动。
-
-## 方式三：完全复制到 iPad 文件 App，不推荐
-
-不建议把 `index.html` 直接放到 iPad 的“文件”App 里打开。
-
-原因是：
-
-- 图片和脚本路径可能受限制。
-- 离线缓存可能无法正常工作。
-- “添加到主屏幕”的体验不好。
-- 本地数据保存可能不稳定。
-
-所以更推荐“放到一个网址上，再用 Safari 添加到主屏幕”。
-
-## 日常怎么用
-
-打开“电子厨房”后：
-
-1. 点“新增菜品”。
-2. 填菜名。
-3. 选择菜品图片。
-4. 填主要食材。
-5. 选择适合早餐、午餐还是晚餐。
-6. 点保存。
-7. 回到菜单页，点“记为早餐 / 午餐 / 晚餐”完成打卡。
-8. 在“打卡记录”里按日期查看当天吃了什么。
-
-## 数据保存在哪里
-
-数据保存在当前 iPad 的 Safari 本地数据库里，跟你打开的那个网址绑定。
-
-也就是说：
-
-- 同一台 iPad、同一个网址：能看到原来的数据。
-- 换了网址：可能看不到原来的数据。
-- 换了设备：不一定自动带过去。
-- 清除 Safari 网站数据：可能会清掉电子厨房数据。
-
-## 换设备前怎么做
-
-换 iPad 或 iPhone 前，一定要先：
-
-1. 打开电子厨房。
-2. 点“导出备份”。
-3. 保存生成的 JSON 文件。
-4. 在新设备上打开电子厨房。
-5. 点“导入备份”。
-6. 选择刚才导出的 JSON 文件。
-
-不要只依赖苹果设备迁移。它可能会带过去，也可能不会完整带过去，本地网页数据库不适合作为唯一备份。
+换设备或重装前请先在电子厨房里点击“导出备份”。

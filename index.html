@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="电子厨房" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="theme-color" content="#f7f2e8" />
+    <meta name="theme-color" content="#fff9f3" />
     <title>电子厨房</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icon.svg" />
@@ -14,10 +14,15 @@
   </head>
   <body>
     <div id="app" class="shell">
+      <div class="top-illustration" aria-hidden="true"></div>
+
       <header class="app-header">
-        <div>
-          <p class="eyebrow">本地电子菜单</p>
-          <h1>电子厨房</h1>
+        <div class="brand">
+          <img src="./assets/home-badge.png" alt="" />
+          <div>
+            <p class="eyebrow">本地电子菜单</p>
+            <h1>电子厨房</h1>
+          </div>
         </div>
         <button id="addDishTop" class="primary-button">新增菜品</button>
       </header>
@@ -26,12 +31,21 @@
         <section class="today-panel">
           <div class="today-copy">
             <p id="todayText" class="eyebrow"></p>
-            <h2 id="mealTitle">今天吃什么</h2>
+            <h2 id="mealTitle">今天想吃什么？</h2>
           </div>
           <div class="meal-tabs" role="tablist" aria-label="餐次">
-            <button class="meal-tab is-active" data-meal="breakfast">早餐</button>
-            <button class="meal-tab" data-meal="lunch">午餐</button>
-            <button class="meal-tab" data-meal="dinner">晚餐</button>
+            <button class="meal-tab" data-meal="breakfast">
+              <img src="./assets/rabbit-spatula.png" alt="" />
+              <span>早餐</span>
+            </button>
+            <button class="meal-tab is-active" data-meal="lunch">
+              <img src="./assets/tiger-chef.png" alt="" />
+              <span>午餐</span>
+            </button>
+            <button class="meal-tab" data-meal="dinner">
+              <img class="dinner-icon" src="./assets/dinner-badge.png" alt="" />
+              <span>晚餐</span>
+            </button>
           </div>
         </section>
 
@@ -50,17 +64,19 @@
 
         <section id="recommendation" class="recommendation is-hidden" aria-live="polite"></section>
 
-        <section id="dishGrid" class="dish-grid"></section>
+        <section class="content-layout">
+          <section id="dishGrid" class="dish-grid"></section>
 
-        <section class="records-panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">打卡记录</p>
-              <h2>按日期查看</h2>
+          <section class="records-panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">打卡记录</p>
+                <h2>今日三餐</h2>
+              </div>
+              <input id="recordDate" class="date-input" type="date" />
             </div>
-            <input id="recordDate" class="date-input" type="date" />
-          </div>
-          <div id="recordsList" class="records-list"></div>
+            <div id="recordsList" class="records-list"></div>
+          </section>
         </section>
       </main>
 

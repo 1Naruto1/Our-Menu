@@ -6,9 +6,9 @@ const STORES = {
 }
 
 const MEALS = [
-  { key: 'breakfast', label: '早餐' },
-  { key: 'lunch', label: '午餐' },
-  { key: 'dinner', label: '晚餐' }
+  { key: 'breakfast', label: '早餐', icon: './assets/rabbit-spatula.png' },
+  { key: 'lunch', label: '午餐', icon: './assets/tiger-chef.png' },
+  { key: 'dinner', label: '晚餐', icon: './assets/dinner-badge.png' }
 ]
 
 const state = {
@@ -217,7 +217,7 @@ function createDish(input) {
 
 function renderDishes() {
   const meal = MEALS.find((item) => item.key === state.activeMeal)
-  els.mealTitle.textContent = `${meal.label}菜单`
+  els.mealTitle.textContent = '今天想吃什么？'
 
   const visible = state.dishes
     .filter((dish) => dish.mealTypes.includes(state.activeMeal))
@@ -249,6 +249,7 @@ function renderDishes() {
 }
 
 function dishCard(dish) {
+  const activeMeal = MEALS.find((meal) => meal.key === state.activeMeal)
   const image = dish.imageData
     ? `<img class="dish-photo" src="${dish.imageData}" alt="${escapeHtml(dish.name)}" />`
     : `<div class="dish-placeholder" style="background:${dish.color}">无图</div>`
@@ -267,10 +268,11 @@ function dishCard(dish) {
         </div>
         <p class="dish-meta">${escapeHtml(dish.ingredients.join('、') || '未填写主要食材')}</p>
         <div class="tag-row">${tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
-        <div class="dish-actions">
-          <button class="primary-button" data-checkin="${dish.id}">记为${mealLabel(state.activeMeal)}</button>
-          <span class="tiny-button">${count} 次</span>
-        </div>
+        <button class="checkin-button" data-checkin="${dish.id}">
+          <img class="${state.activeMeal === 'dinner' ? 'dinner-icon' : ''}" src="${activeMeal.icon}" alt="" />
+          <span>记为${activeMeal.label}</span>
+        </button>
+        <div class="dish-count">${count} 次打卡</div>
       </div>
     </article>
   `
