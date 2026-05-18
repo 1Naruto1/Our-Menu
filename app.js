@@ -22,6 +22,7 @@ const state = {
 const els = {
   addDishBottom: document.querySelector('#addDishBottom'),
   addDishTop: document.querySelector('#addDishTop'),
+  checkinDate: document.querySelector('#checkinDate'),
   closeDialog: document.querySelector('#closeDialog'),
   deleteDish: document.querySelector('#deleteDish'),
   dialog: document.querySelector('#dishDialog'),
@@ -58,8 +59,7 @@ async function init() {
   db = await openDatabase()
   await seedIfEmpty()
   bindEvents()
-  els.todayText.textContent = prettyDate(new Date())
-  els.recordDate.value = state.recordDate
+  syncSelectedDate(state.recordDate)
   await refresh()
 
   if ('serviceWorker' in navigator) {
@@ -79,11 +79,8 @@ function bindEvents() {
     renderDishes()
   })
   els.randomPick.addEventListener('click', randomPick)
-  els.recordDate.addEventListener('change', async (event) => {
-    state.recordDate = event.target.value
-    state.checkins = await getAll(STORES.checkins)
-    renderRecords()
-  })
+  els.checkinDate.addEventListener('change', () => setSelectedDate(els.checkinDate.value))
+  els.recordDate.addEventListener('change', () => setSelectedDate(els.recordDate.value))
   els.exportData.addEventListener('click', exportData)
   els.importData.addEventListener('change', importData)
 
@@ -217,7 +214,7 @@ function createDish(input) {
 
 function renderDishes() {
   const meal = MEALS.find((item) => item.key === state.activeMeal)
-  els.mealTitle.textContent = '今天想吃什么？'
+  els.mealTitle.textContent = isToday(state.recordDate) ? '今天想吃什么？' : '这天吃了什么？'
 
   const visible = state.dishes
     .filter((dish) => dish.mealTypes.includes(state.activeMeal))
@@ -295,6 +292,10 @@ function renderRecords() {
       </section>
     `
   }).join('')
+
+  els.recordsList.querySelectorAll('[data-delete-record]').forEach((button) => {
+    button.addEventListener('click', () => deleteCheckin(button.dataset.deleteRecord))
+  })
 }
 
 function recordItem(record) {
@@ -304,12 +305,21 @@ function recordItem(record) {
   return `
     <div class="record-item">
       ${image}
-      <div>
+      <div class="record-main">
         <div class="record-name">${escapeHtml(record.dishName)}</div>
         <div class="record-time">${new Date(record.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</div>
       </div>
+      <button class="record-delete" data-delete-record="${record.id}" aria-label="删除${escapeHtml(record.dishName)}的打卡记录">删除</button>
     </div>
   `
+}
+
+async function deleteCheckin(id) {
+  if (!id) return
+  if (!confirm('确定删除这条打卡记录吗？')) return
+  await remove(STORES.checkins, id)
+  showToast('打卡记录已删除')
+  await refresh()
 }
 
 function openDishDialog(id = '') {
@@ -382,9 +392,10 @@ async function checkin(dishId) {
   const dish = state.dishes.find((item) => item.id === dishId)
   if (!dish) return
 
-  const today = formatDate(new Date())
-  const duplicated = state.checkins.some((item) => item.dishId === dishId && item.mealType === state.activeMeal && item.date === today)
-  if (duplicated && !confirm('今天这个餐次已经记录过这道菜，还要再记一次吗？')) return
+  const checkinDate = state.recordDate || formatDate(new Date())
+  const duplicated = state.checkins.some((item) => item.dishId === dishId && item.mealType === state.activeMeal && item.date === checkinDate)
+  const dateText = isToday(checkinDate) ? '今天' : prettyDate(checkinDate)
+  if (duplicated && !confirm(`${dateText}这个餐次已经记录过这道菜，还要再记一次吗？`)) return
 
   await put(STORES.checkins, {
     id: crypto.randomUUID(),
@@ -392,13 +403,12 @@ async function checkin(dishId) {
     dishName: dish.name,
     imageData: dish.imageData || '',
     mealType: state.activeMeal,
-    date: today,
+    date: checkinDate,
     createdAt: new Date().toISOString()
   })
 
-  state.recordDate = today
-  els.recordDate.value = today
-  showToast(`已记为${mealLabel(state.activeMeal)}`)
+  syncSelectedDate(checkinDate)
+  showToast(`已记为${dateText}${mealLabel(state.activeMeal)}`)
   await refresh()
 }
 
@@ -483,6 +493,25 @@ function fileToDataUrl(file) {
     reader.onerror = () => reject(reader.error)
     reader.readAsDataURL(file)
   })
+}
+
+async function setSelectedDate(value) {
+  if (!value) return
+  syncSelectedDate(value)
+  state.checkins = await getAll(STORES.checkins)
+  renderDishes()
+  renderRecords()
+}
+
+function syncSelectedDate(value) {
+  state.recordDate = value || formatDate(new Date())
+  els.checkinDate.value = state.recordDate
+  els.recordDate.value = state.recordDate
+  els.todayText.textContent = isToday(state.recordDate) ? prettyDate(state.recordDate) : `补记：${prettyDate(state.recordDate)}`
+}
+
+function isToday(value) {
+  return value === formatDate(new Date())
 }
 
 function formatDate(date) {

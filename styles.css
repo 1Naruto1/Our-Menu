@@ -195,6 +195,38 @@ h2 {
   backdrop-filter: blur(12px);
 }
 
+.meal-controls {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 350px);
+}
+
+.checkin-date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 12px 0 14px;
+  color: #8b6070;
+  background: rgba(255, 229, 236, 0.78);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.checkin-date input {
+  width: 148px;
+  min-height: 34px;
+  color: #8b6070;
+  background: rgba(255, 253, 251, 0.9);
+  border: 0;
+  border-radius: 8px;
+  font-weight: 900;
+  text-align: center;
+}
+
 .meal-tabs {
   display: grid;
   grid-template-columns: repeat(3, 110px);
@@ -479,11 +511,27 @@ h2 {
   border-radius: 8px;
 }
 
+.record-main {
+  min-width: 0;
+  flex: 1;
+}
+
 .record-name {
   overflow: hidden;
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.record-delete {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  color: #b24636;
+  background: #ffe1dc;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .record-time,
@@ -704,6 +752,10 @@ h2 {
 
   .meal-tabs {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .meal-controls {
+    width: 100%;
   }
 
   .meal-tab {

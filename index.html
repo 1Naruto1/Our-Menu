@@ -33,19 +33,25 @@
             <p id="todayText" class="eyebrow"></p>
             <h2 id="mealTitle">今天想吃什么？</h2>
           </div>
-          <div class="meal-tabs" role="tablist" aria-label="餐次">
-            <button class="meal-tab" data-meal="breakfast">
-              <img src="./assets/rabbit-spatula.png" alt="" />
-              <span>早餐</span>
-            </button>
-            <button class="meal-tab is-active" data-meal="lunch">
-              <img src="./assets/tiger-chef.png" alt="" />
-              <span>午餐</span>
-            </button>
-            <button class="meal-tab" data-meal="dinner">
-              <img class="dinner-icon" src="./assets/dinner-badge.png" alt="" />
-              <span>晚餐</span>
-            </button>
+          <div class="meal-controls">
+            <label class="checkin-date">
+              <span>打卡日期</span>
+              <input id="checkinDate" type="date" />
+            </label>
+            <div class="meal-tabs" role="tablist" aria-label="餐次">
+              <button class="meal-tab" data-meal="breakfast">
+                <img src="./assets/rabbit-spatula.png" alt="" />
+                <span>早餐</span>
+              </button>
+              <button class="meal-tab is-active" data-meal="lunch">
+                <img src="./assets/tiger-chef.png" alt="" />
+                <span>午餐</span>
+              </button>
+              <button class="meal-tab" data-meal="dinner">
+                <img class="dinner-icon" src="./assets/dinner-badge.png" alt="" />
+                <span>晚餐</span>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -71,7 +77,7 @@
             <div class="section-head">
               <div>
                 <p class="eyebrow">打卡记录</p>
-                <h2>今日三餐</h2>
+                <h2>三餐记录</h2>
               </div>
               <input id="recordDate" class="date-input" type="date" />
             </div>
