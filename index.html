@@ -31,11 +31,22 @@
       </header>
 
       <main>
+        <section class="message-board">
+          <div class="message-board-head">
+            <div>
+              <p class="eyebrow">留言板</p>
+              <h2>厨房小纸条</h2>
+            </div>
+            <button id="openMessageBoard" class="ghost-button">查看全部</button>
+          </div>
+          <div id="messagePreview" class="message-preview"></div>
+        </section>
+
         <section class="hero-panel">
           <div class="hero-main">
             <div class="card-head">
               <div class="head-title">
-                <img src="./assets/image 提醒.png" alt="" />
+                <img src="./assets/reminder-badge.png" alt="" />
                 <div>
                   <p class="eyebrow">食材提醒</p>
                   <h2>3天内要用的食材</h2>
@@ -285,6 +296,12 @@
           <button type="button" data-cook="together">一起</button>
         </div>
 
+        <label class="photo-picker">
+          <span>添加本次打卡图片</span>
+          <input id="checkinPhotos" type="file" accept="image/*" multiple />
+        </label>
+        <div id="checkinPhotoPreview" class="photo-preview"></div>
+
         <label class="field">
           <span>评论</span>
           <textarea id="checkinComment" rows="4" placeholder="例如：今天火候刚好，下次可以少放一点盐"></textarea>
@@ -292,6 +309,52 @@
 
         <div class="dialog-actions">
           <button type="submit" class="primary-button">保存打卡</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="recordDetailDialog" class="app-dialog">
+      <form method="dialog">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">打卡详情</p>
+            <h2 id="recordDetailTitle">本次打卡</h2>
+          </div>
+          <button type="button" id="closeRecordDetailDialog" class="icon-button" aria-label="关闭">×</button>
+        </div>
+        <div id="recordDetailContent" class="record-detail-content"></div>
+      </form>
+    </dialog>
+
+    <dialog id="messageDialog" class="app-dialog message-dialog">
+      <form id="messageForm" method="dialog">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">留言历史</p>
+            <h2>厨房小纸条</h2>
+          </div>
+          <button type="button" id="closeMessageDialog" class="icon-button" aria-label="关闭">×</button>
+        </div>
+
+        <div id="messageHistory" class="message-history"></div>
+
+        <input id="replyToMessage" type="hidden" />
+        <div id="replyHint" class="reply-hint is-hidden"></div>
+
+        <div class="cook-picker message-author">
+          <span>谁来留言？</span>
+          <button type="button" data-message-author="rabbit"><img src="./assets/rabbit-spatula.png" alt="" />兔兔</button>
+          <button type="button" data-message-author="tiger"><img src="./assets/tiger-chef.png" alt="" />虎虎</button>
+        </div>
+
+        <label class="field">
+          <span>留言内容</span>
+          <textarea id="messageText" rows="3" placeholder="例如：青菜快到期了，今晚做掉吧"></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button id="cancelReply" type="button" class="secondary-button is-hidden">取消回复</button>
+          <button type="submit" class="primary-button">发布留言</button>
         </div>
       </form>
     </dialog>

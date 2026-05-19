@@ -1,10 +1,11 @@
 const DB_NAME = 'electronic-kitchen-local'
-const DB_VERSION = 2
+const DB_VERSION = 3
 const TITLE_KEY = 'electronic-kitchen-title'
 const STORES = {
   dishes: 'dishes',
   ingredients: 'ingredients',
-  checkins: 'checkins'
+  checkins: 'checkins',
+  messages: 'messages'
 }
 
 const MEALS = [
@@ -23,6 +24,7 @@ const state = {
   dishes: [],
   ingredients: [],
   checkins: [],
+  messages: [],
   activeView: 'menu',
   menuMode: 'pinyin',
   fridgeMode: 'expiry',
@@ -31,6 +33,8 @@ const state = {
   recordDate: formatDate(new Date()),
   pendingDishImage: '',
   pendingIngredientImage: '',
+  pendingCheckinPhotos: [],
+  messageAuthor: 'rabbit',
   pendingCheckin: null
 }
 
@@ -44,11 +48,16 @@ const els = {
   checkinDate: document.querySelector('#checkinDate'),
   checkinDialog: document.querySelector('#checkinDialog'),
   checkinForm: document.querySelector('#checkinForm'),
+  checkinPhotoPreview: document.querySelector('#checkinPhotoPreview'),
+  checkinPhotos: document.querySelector('#checkinPhotos'),
   checkinRating: document.querySelector('#checkinRating'),
   checkinTitle: document.querySelector('#checkinTitle'),
   closeCheckinDialog: document.querySelector('#closeCheckinDialog'),
   closeDishDialog: document.querySelector('#closeDishDialog'),
   closeIngredientDialog: document.querySelector('#closeIngredientDialog'),
+  closeMessageDialog: document.querySelector('#closeMessageDialog'),
+  closeRecordDetailDialog: document.querySelector('#closeRecordDetailDialog'),
+  cancelReply: document.querySelector('#cancelReply'),
   deleteDish: document.querySelector('#deleteDish'),
   deleteIngredient: document.querySelector('#deleteIngredient'),
   dishCategory: document.querySelector('#dishCategory'),
@@ -85,8 +94,19 @@ const els = {
   ingredientUnit: document.querySelector('#ingredientUnit'),
   menuContent: document.querySelector('#menuContent'),
   menuMeta: document.querySelector('#menuMeta'),
+  messageDialog: document.querySelector('#messageDialog'),
+  messageForm: document.querySelector('#messageForm'),
+  messageHistory: document.querySelector('#messageHistory'),
+  messagePreview: document.querySelector('#messagePreview'),
+  messageText: document.querySelector('#messageText'),
+  openMessageBoard: document.querySelector('#openMessageBoard'),
   recordDate: document.querySelector('#recordDate'),
+  recordDetailContent: document.querySelector('#recordDetailContent'),
+  recordDetailDialog: document.querySelector('#recordDetailDialog'),
+  recordDetailTitle: document.querySelector('#recordDetailTitle'),
   recordsList: document.querySelector('#recordsList'),
+  replyHint: document.querySelector('#replyHint'),
+  replyToMessage: document.querySelector('#replyToMessage'),
   toast: document.querySelector('#toast')
 }
 
@@ -137,16 +157,25 @@ function bindEvents() {
     button.addEventListener('click', () => setCook(button.dataset.cook))
   })
 
+  document.querySelectorAll('[data-message-author]').forEach((button) => {
+    button.addEventListener('click', () => setMessageAuthor(button.dataset.messageAuthor))
+  })
+
   els.addDish.addEventListener('click', () => openDishDialog())
   els.addIngredient.addEventListener('click', () => openIngredientDialog())
   els.closeDishDialog.addEventListener('click', () => els.dishDialog.close())
   els.closeIngredientDialog.addEventListener('click', () => els.ingredientDialog.close())
   els.closeCheckinDialog.addEventListener('click', () => els.checkinDialog.close())
+  els.closeRecordDetailDialog.addEventListener('click', () => els.recordDetailDialog.close())
+  els.openMessageBoard.addEventListener('click', openMessageDialog)
+  els.closeMessageDialog.addEventListener('click', () => els.messageDialog.close())
+  els.cancelReply.addEventListener('click', clearReplyTarget)
   els.deleteDish.addEventListener('click', deleteCurrentDish)
   els.deleteIngredient.addEventListener('click', deleteCurrentIngredient)
   els.dishForm.addEventListener('submit', saveDishFromForm)
   els.ingredientForm.addEventListener('submit', saveIngredientFromForm)
   els.checkinForm.addEventListener('submit', saveCheckin)
+  els.messageForm.addEventListener('submit', saveMessage)
   els.dishImage.addEventListener('change', async (event) => {
     state.pendingDishImage = await imageFromEvent(event)
     updateImagePreview(els.dishImagePreview, els.dishImageHint, state.pendingDishImage)
@@ -154,6 +183,12 @@ function bindEvents() {
   els.ingredientImage.addEventListener('change', async (event) => {
     state.pendingIngredientImage = await imageFromEvent(event)
     updateImagePreview(els.ingredientImagePreview, els.ingredientImageHint, state.pendingIngredientImage)
+  })
+  els.checkinPhotos.addEventListener('change', async (event) => {
+    const photos = await imagesFromEvent(event)
+    state.pendingCheckinPhotos = [...state.pendingCheckinPhotos, ...photos]
+    renderCheckinPhotoPreview()
+    event.target.value = ''
   })
   els.dishSearch.addEventListener('input', () => {
     state.dishKeyword = els.dishSearch.value.trim().toLowerCase()
@@ -192,6 +227,9 @@ function openDatabase() {
       }
       if (!database.objectStoreNames.contains(STORES.checkins)) {
         database.createObjectStore(STORES.checkins, { keyPath: 'id' })
+      }
+      if (!database.objectStoreNames.contains(STORES.messages)) {
+        database.createObjectStore(STORES.messages, { keyPath: 'id' })
       }
     }
     request.onsuccess = () => resolve(request.result)
@@ -280,17 +318,31 @@ async function seedIfEmpty() {
     })
   ]
   await Promise.all(dishes.map((dish) => put(STORES.dishes, dish)))
+
+  await put(STORES.messages, createMessage({
+    author: 'rabbit',
+    text: '青菜明天就到期啦，今晚可以先做青菜豆腐汤。',
+    createdAt: new Date().toISOString()
+  }))
+  await put(STORES.messages, createMessage({
+    author: 'tiger',
+    text: '收到，我来端盘子。',
+    replyTo: '青菜明天就到期啦，今晚可以先做青菜豆腐汤。',
+    createdAt: new Date(Date.now() + 60000).toISOString()
+  }))
 }
 
 async function refresh() {
   state.dishes = normalizeDishes(await getAll(STORES.dishes))
   state.ingredients = await getAll(STORES.ingredients)
-  state.checkins = await getAll(STORES.checkins)
+  state.checkins = normalizeCheckins(await getAll(STORES.checkins))
+  state.messages = await getAll(STORES.messages)
   renderAll()
 }
 
 function renderAll() {
   renderHero()
+  renderMessages()
   renderMenu()
   renderFridge()
   renderRecords()
@@ -322,6 +374,25 @@ function renderHero() {
     best.missing.length ? `缺 ${best.missing.length} 种` : '可做',
     best.urgentHits ? `消耗 ${best.urgentHits} 种快过期食材` : '适合安排'
   ].map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')
+}
+
+function renderMessages() {
+  const latest = [...state.messages]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 2)
+
+  if (!latest.length) {
+    els.messagePreview.innerHTML = `
+      <article class="message-empty">
+        <strong>还没有留言</strong>
+        <span>可以给对方留一句今天想吃什么、哪些食材要先做。</span>
+      </article>
+    `
+  } else {
+    els.messagePreview.innerHTML = latest.map(messagePreviewItem).join('')
+  }
+
+  if (els.messageDialog.open) renderMessageHistory()
 }
 
 function renderMenu() {
@@ -406,10 +477,19 @@ function renderRecords() {
   }).join('')
 
   els.recordsList.querySelectorAll('[data-delete-record]').forEach((button) => {
-    button.addEventListener('click', () => deleteCheckin(button.dataset.deleteRecord))
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
+      deleteCheckin(button.dataset.deleteRecord)
+    })
   })
   els.recordsList.querySelectorAll('[data-edit-record]').forEach((button) => {
-    button.addEventListener('click', () => openCheckinDialog('', '', button.dataset.editRecord))
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
+      openCheckinDialog('', '', button.dataset.editRecord)
+    })
+  })
+  els.recordsList.querySelectorAll('[data-record-detail]').forEach((item) => {
+    item.addEventListener('click', () => openRecordDetail(item.dataset.recordDetail))
   })
 }
 
@@ -500,13 +580,20 @@ function ingredientCard(item) {
 }
 
 function recordItem(record) {
+  const dish = state.dishes.find((item) => item.id === record.dishId)
+  const photos = recordPhotos(record)
+  const thumb = photos.at(-1) || dish?.imageData || ''
+  const thumbHtml = thumb
+    ? `<img class="record-thumb" src="${thumb}" alt="" />`
+    : '<div class="record-thumb fallback">饭</div>'
+  const stack = photos.length > 1 ? `<span class="photo-count">${photos.length}张</span>` : ''
   return `
-    <div class="record-item">
-      <div class="record-thumb">${escapeHtml((COOKS[record.cook] || '饭').slice(0, 1))}</div>
+    <div class="record-item" data-record-detail="${record.id}" tabindex="0" role="button">
+      <div class="record-thumb-wrap">${thumbHtml}${stack}</div>
       <div class="record-main">
         <div class="record-name">${escapeHtml(record.dishName)}</div>
         <div class="record-rating">${starsText(record.rating)} · ${escapeHtml(COOKS[record.cook] || '未记录做饭人')}</div>
-        ${record.comment ? `<div class="record-comment">${escapeHtml(record.comment)}</div>` : ''}
+        ${record.comment ? `<div class="record-comment">${escapeHtml(truncateText(record.comment, 34))}</div>` : '<div class="record-comment muted">点击查看完整详情</div>'}
       </div>
       <div class="record-actions">
         <button class="record-review" data-edit-record="${record.id}">修改</button>
@@ -616,11 +703,13 @@ function openCheckinDialog(dishId = '', mealType = '', recordId = '') {
   const dish = dishId ? state.dishes.find((item) => item.id === dishId) : null
   if (!record && !dish) return
   state.pendingCheckin = record ? { mode: 'edit', recordId } : { mode: 'create', dishId, mealType }
+  state.pendingCheckinPhotos = record ? recordPhotos(record) : []
   els.checkinTitle.textContent = record ? `修改：${record.dishName}` : `记录：${dish.name}`
   els.checkinComment.value = record?.comment || ''
   syncSelectedDate(record?.date || state.recordDate)
   setRating(Number(record?.rating || 5))
   setCook(record?.cook || 'together')
+  renderCheckinPhotoPreview()
   els.checkinDialog.showModal()
 }
 
@@ -637,6 +726,7 @@ async function saveCheckin(event) {
       date: els.checkinDate.value || state.recordDate,
       rating: Number(els.checkinRating.value),
       cook: els.checkinCook.value,
+      photos: state.pendingCheckinPhotos,
       comment: els.checkinComment.value.trim(),
       updatedAt: new Date().toISOString()
     })
@@ -655,6 +745,7 @@ async function saveCheckin(event) {
       date,
       rating: Number(els.checkinRating.value),
       cook: els.checkinCook.value,
+      photos: state.pendingCheckinPhotos,
       comment: els.checkinComment.value.trim(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -664,6 +755,7 @@ async function saveCheckin(event) {
 
   els.checkinDialog.close()
   state.pendingCheckin = null
+  state.pendingCheckinPhotos = []
   syncSelectedDate(els.checkinDate.value || state.recordDate)
   await refresh()
 }
@@ -688,6 +780,139 @@ function setCook(value) {
   document.querySelectorAll('[data-cook]').forEach((button) => {
     button.classList.toggle('is-active', button.dataset.cook === value)
   })
+}
+
+function setMessageAuthor(value) {
+  state.messageAuthor = value
+  document.querySelectorAll('[data-message-author]').forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.messageAuthor === value)
+  })
+}
+
+function renderCheckinPhotoPreview() {
+  if (!state.pendingCheckinPhotos.length) {
+    els.checkinPhotoPreview.innerHTML = '<span>还没有为这次打卡添加图片</span>'
+    return
+  }
+  els.checkinPhotoPreview.innerHTML = state.pendingCheckinPhotos.map((src, index) => `
+    <button type="button" data-remove-photo="${index}" aria-label="移除第${index + 1}张图片">
+      <img src="${src}" alt="" />
+    </button>
+  `).join('')
+  els.checkinPhotoPreview.querySelectorAll('[data-remove-photo]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.pendingCheckinPhotos.splice(Number(button.dataset.removePhoto), 1)
+      renderCheckinPhotoPreview()
+    })
+  })
+}
+
+function openRecordDetail(id) {
+  const record = state.checkins.find((item) => item.id === id)
+  if (!record) return
+  const dish = state.dishes.find((item) => item.id === record.dishId)
+  const photos = recordPhotos(record)
+  const allPhotos = photos.length ? photos : dish?.imageData ? [dish.imageData] : []
+  els.recordDetailTitle.textContent = `${record.dishName} · ${mealLabel(record.mealType)}`
+  els.recordDetailContent.innerHTML = `
+    <div class="detail-meta">
+      <span>${escapeHtml(record.date)}</span>
+      <span>${starsText(record.rating)}</span>
+      <span>${escapeHtml(COOKS[record.cook] || '未记录做饭人')}</span>
+    </div>
+    <div class="detail-photos ${allPhotos.length > 1 ? 'stacked' : ''}">
+      ${allPhotos.length ? allPhotos.map((src) => `<img src="${src}" alt="" />`).join('') : '<div class="empty-state"><p>这次打卡还没有图片</p></div>'}
+    </div>
+    <div class="detail-comment">
+      <strong>完整评价</strong>
+      <p>${escapeHtml(record.comment || '还没有填写评价')}</p>
+    </div>
+  `
+  els.recordDetailDialog.showModal()
+}
+
+function openMessageDialog() {
+  clearReplyTarget()
+  setMessageAuthor(state.messageAuthor)
+  renderMessageHistory()
+  els.messageDialog.showModal()
+}
+
+function renderMessageHistory() {
+  const sorted = [...state.messages].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  els.messageHistory.innerHTML = sorted.length
+    ? sorted.map((message) => messageHistoryItem(message)).join('')
+    : '<div class="message-empty"><strong>还没有留言</strong><span>从下面开始写第一条厨房小纸条。</span></div>'
+  els.messageHistory.querySelectorAll('[data-reply-message]').forEach((button) => {
+    button.addEventListener('click', () => setReplyTarget(button.dataset.replyMessage))
+  })
+}
+
+function messagePreviewItem(message) {
+  return `
+    <article class="message-chip ${message.author}">
+      <img src="${authorAvatar(message.author)}" alt="" />
+      <div>
+        <strong>${escapeHtml(COOKS[message.author] || '留言')}</strong>
+        <span>${escapeHtml(timeText(message.createdAt))}</span>
+        <p>${escapeHtml(truncateText(message.text, 38))}</p>
+      </div>
+    </article>
+  `
+}
+
+function messageHistoryItem(message) {
+  return `
+    <article class="message-history-item ${message.author}">
+      <img src="${authorAvatar(message.author)}" alt="" />
+      <div>
+        <div class="message-line">
+          <strong>${escapeHtml(COOKS[message.author] || '留言')}</strong>
+          <span>${escapeHtml(timeText(message.createdAt))}</span>
+        </div>
+        ${message.replyTo ? `<em>回复：${escapeHtml(truncateText(message.replyTo, 34))}</em>` : ''}
+        <p>${escapeHtml(message.text)}</p>
+        <button type="button" data-reply-message="${message.id}">回复</button>
+      </div>
+    </article>
+  `
+}
+
+async function saveMessage(event) {
+  event.preventDefault()
+  const text = els.messageText.value.trim()
+  if (!text) {
+    showToast('先写一点留言内容')
+    return
+  }
+  const replyTo = els.replyToMessage.value
+  const parent = replyTo ? state.messages.find((item) => item.id === replyTo) : null
+  await put(STORES.messages, createMessage({
+    author: state.messageAuthor,
+    text,
+    replyTo: parent?.text || ''
+  }))
+  els.messageText.value = ''
+  clearReplyTarget()
+  showToast('留言已保存')
+  await refresh()
+}
+
+function setReplyTarget(id) {
+  const message = state.messages.find((item) => item.id === id)
+  if (!message) return
+  els.replyToMessage.value = id
+  els.replyHint.textContent = `正在回复：${truncateText(message.text, 36)}`
+  els.replyHint.classList.remove('is-hidden')
+  els.cancelReply.classList.remove('is-hidden')
+  els.messageText.focus()
+}
+
+function clearReplyTarget() {
+  els.replyToMessage.value = ''
+  els.replyHint.textContent = ''
+  els.replyHint.classList.add('is-hidden')
+  els.cancelReply.classList.add('is-hidden')
 }
 
 function recommendedDishes() {
@@ -767,6 +992,16 @@ function createIngredient(input) {
   }
 }
 
+function createMessage(input) {
+  return {
+    id: crypto.randomUUID(),
+    author: input.author || 'rabbit',
+    text: input.text || '',
+    replyTo: input.replyTo || '',
+    createdAt: input.createdAt || new Date().toISOString()
+  }
+}
+
 function normalizeDishes(dishes) {
   return dishes.map((dish) => ({
     ...dish,
@@ -774,6 +1009,13 @@ function normalizeDishes(dishes) {
     ingredientUsages: dish.ingredientUsages?.length
       ? dish.ingredientUsages
       : (dish.ingredients || []).map((name) => ({ ingredientId: '', name, quantity: '', unit: '' }))
+  }))
+}
+
+function normalizeCheckins(checkins) {
+  return checkins.map((record) => ({
+    ...record,
+    photos: recordPhotos(record)
   }))
 }
 
@@ -822,12 +1064,13 @@ function updateDocumentTitle() {
 function exportData() {
   const payload = {
     app: '电子厨房',
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     title: els.appTitleInput.value.trim() || '电子厨房',
     dishes: state.dishes,
     ingredients: state.ingredients,
-    checkins: state.checkins
+    checkins: state.checkins,
+    messages: state.messages
   }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -849,9 +1092,11 @@ async function importData(event) {
     await clearStore(STORES.dishes)
     await clearStore(STORES.ingredients)
     await clearStore(STORES.checkins)
+    await clearStore(STORES.messages)
     await Promise.all(payload.dishes.map((dish) => put(STORES.dishes, dish)))
     await Promise.all((payload.ingredients || []).map((item) => put(STORES.ingredients, item)))
     await Promise.all(payload.checkins.map((record) => put(STORES.checkins, record)))
+    await Promise.all((payload.messages || []).map((message) => put(STORES.messages, message)))
     if (payload.title) {
       els.appTitleInput.value = payload.title
       updateAppTitle()
@@ -876,6 +1121,11 @@ async function imageFromEvent(event) {
   const file = event.target.files[0]
   if (!file) return ''
   return fileToDataUrl(file)
+}
+
+async function imagesFromEvent(event) {
+  const files = [...event.target.files]
+  return Promise.all(files.map(fileToDataUrl))
 }
 
 function updateImagePreview(imageEl, hintEl, value) {
@@ -964,6 +1214,31 @@ function randomColor(seed = '') {
   const colors = ['#6ea577', '#d95a38', '#e8c569', '#8fa7c8', '#d78998']
   const index = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0) % colors.length
   return colors[index]
+}
+
+function recordPhotos(record) {
+  if (Array.isArray(record.photos)) return record.photos.filter(Boolean)
+  if (record.photo) return [record.photo]
+  return []
+}
+
+function authorAvatar(author) {
+  return author === 'tiger' ? './assets/tiger-chef.png' : './assets/rabbit-spatula.png'
+}
+
+function truncateText(value, maxLength) {
+  const text = String(value || '')
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+}
+
+function timeText(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  const hour = `${date.getHours()}`.padStart(2, '0')
+  const minute = `${date.getMinutes()}`.padStart(2, '0')
+  return `${month}/${day} ${hour}:${minute}`
 }
 
 function escapeHtml(value) {

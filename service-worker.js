@@ -1,4 +1,4 @@
-const CACHE_NAME = 'electronic-kitchen-kawaii-v10'
+const CACHE_NAME = 'electronic-kitchen-kawaii-v12'
 const ASSETS = [
   './',
   './index.html',
@@ -15,7 +15,8 @@ const ASSETS = [
   './assets/dinner-badge.png',
   './assets/menu-tab.png',
   './assets/fridge-tab.png',
-  './assets/image 提醒.png'
+  './assets/image 提醒.png',
+  './assets/reminder-badge.png'
 ]
 
 self.addEventListener('install', (event) => {
@@ -33,6 +34,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone()
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
+        return response
+      })
+      .catch(() => caches.match(event.request))
   )
 })
