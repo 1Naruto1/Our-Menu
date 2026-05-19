@@ -339,6 +339,7 @@
         <div id="messageHistory" class="message-history"></div>
 
         <input id="replyToMessage" type="hidden" />
+        <input id="editingMessageId" type="hidden" />
         <div id="replyHint" class="reply-hint is-hidden"></div>
 
         <div class="cook-picker message-author">
@@ -354,7 +355,7 @@
 
         <div class="dialog-actions">
           <button id="cancelReply" type="button" class="secondary-button is-hidden">取消回复</button>
-          <button type="submit" class="primary-button">发布留言</button>
+          <button id="saveMessageButton" type="submit" class="primary-button">发布留言</button>
         </div>
       </form>
     </dialog>

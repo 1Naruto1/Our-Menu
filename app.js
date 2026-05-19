@@ -73,6 +73,7 @@ const els = {
   dishNote: document.querySelector('#dishNote'),
   dishSearch: document.querySelector('#dishSearch'),
   exportData: document.querySelector('#exportData'),
+  editingMessageId: document.querySelector('#editingMessageId'),
   fridgeContent: document.querySelector('#fridgeContent'),
   fridgeMeta: document.querySelector('#fridgeMeta'),
   heroRecommendTags: document.querySelector('#heroRecommendTags'),
@@ -107,6 +108,7 @@ const els = {
   recordsList: document.querySelector('#recordsList'),
   replyHint: document.querySelector('#replyHint'),
   replyToMessage: document.querySelector('#replyToMessage'),
+  saveMessageButton: document.querySelector('#saveMessageButton'),
   toast: document.querySelector('#toast')
 }
 
@@ -169,7 +171,7 @@ function bindEvents() {
   els.closeRecordDetailDialog.addEventListener('click', () => els.recordDetailDialog.close())
   els.openMessageBoard.addEventListener('click', openMessageDialog)
   els.closeMessageDialog.addEventListener('click', () => els.messageDialog.close())
-  els.cancelReply.addEventListener('click', clearReplyTarget)
+  els.cancelReply.addEventListener('click', clearMessageDraft)
   els.deleteDish.addEventListener('click', deleteCurrentDish)
   els.deleteIngredient.addEventListener('click', deleteCurrentIngredient)
   els.dishForm.addEventListener('submit', saveDishFromForm)
@@ -319,15 +321,17 @@ async function seedIfEmpty() {
   ]
   await Promise.all(dishes.map((dish) => put(STORES.dishes, dish)))
 
-  await put(STORES.messages, createMessage({
+  const firstMessage = createMessage({
     author: 'rabbit',
     text: '青菜明天就到期啦，今晚可以先做青菜豆腐汤。',
     createdAt: new Date().toISOString()
-  }))
+  })
+  await put(STORES.messages, firstMessage)
   await put(STORES.messages, createMessage({
     author: 'tiger',
     text: '收到，我来端盘子。',
-    replyTo: '青菜明天就到期啦，今晚可以先做青菜豆腐汤。',
+    replyTo: firstMessage.id,
+    threadId: firstMessage.threadId,
     createdAt: new Date(Date.now() + 60000).toISOString()
   }))
 }
@@ -336,7 +340,7 @@ async function refresh() {
   state.dishes = normalizeDishes(await getAll(STORES.dishes))
   state.ingredients = await getAll(STORES.ingredients)
   state.checkins = normalizeCheckins(await getAll(STORES.checkins))
-  state.messages = await getAll(STORES.messages)
+  state.messages = normalizeMessages(await getAll(STORES.messages))
   renderAll()
 }
 
@@ -377,11 +381,10 @@ function renderHero() {
 }
 
 function renderMessages() {
-  const latest = [...state.messages]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const latestThreads = messageThreads()
     .slice(0, 2)
 
-  if (!latest.length) {
+  if (!latestThreads.length) {
     els.messagePreview.innerHTML = `
       <article class="message-empty">
         <strong>还没有留言</strong>
@@ -389,7 +392,7 @@ function renderMessages() {
       </article>
     `
   } else {
-    els.messagePreview.innerHTML = latest.map(messagePreviewItem).join('')
+    els.messagePreview.innerHTML = latestThreads.map(threadPreviewItem).join('')
   }
 
   if (els.messageDialog.open) renderMessageHistory()
@@ -832,47 +835,75 @@ function openRecordDetail(id) {
 }
 
 function openMessageDialog() {
-  clearReplyTarget()
+  clearMessageDraft()
   setMessageAuthor(state.messageAuthor)
   renderMessageHistory()
   els.messageDialog.showModal()
 }
 
 function renderMessageHistory() {
-  const sorted = [...state.messages].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  els.messageHistory.innerHTML = sorted.length
-    ? sorted.map((message) => messageHistoryItem(message)).join('')
+  const threads = messageThreads()
+  els.messageHistory.innerHTML = threads.length
+    ? threads.map(messageThreadItem).join('')
     : '<div class="message-empty"><strong>还没有留言</strong><span>从下面开始写第一条厨房小纸条。</span></div>'
   els.messageHistory.querySelectorAll('[data-reply-message]').forEach((button) => {
     button.addEventListener('click', () => setReplyTarget(button.dataset.replyMessage))
   })
+  els.messageHistory.querySelectorAll('[data-edit-message]').forEach((button) => {
+    button.addEventListener('click', () => setEditTarget(button.dataset.editMessage))
+  })
+  els.messageHistory.querySelectorAll('[data-delete-message]').forEach((button) => {
+    button.addEventListener('click', () => deleteMessage(button.dataset.deleteMessage))
+  })
 }
 
-function messagePreviewItem(message) {
+function threadPreviewItem(thread) {
+  const latest = thread.messages.at(-1)
+  const starter = thread.messages[0]
   return `
-    <article class="message-chip ${message.author}">
-      <img src="${authorAvatar(message.author)}" alt="" />
+    <article class="message-chip ${latest.author}">
+      <img src="${authorAvatar(latest.author)}" alt="" />
       <div>
-        <strong>${escapeHtml(COOKS[message.author] || '留言')}</strong>
-        <span>${escapeHtml(timeText(message.createdAt))}</span>
-        <p>${escapeHtml(truncateText(message.text, 38))}</p>
+        <strong>${escapeHtml(COOKS[latest.author] || '留言')} · ${thread.messages.length} 条</strong>
+        <span>${escapeHtml(timeText(latest.createdAt))}</span>
+        <p>${starter.id === latest.id ? escapeHtml(truncateText(latest.text, 38)) : `回复：${escapeHtml(truncateText(latest.text, 34))}`}</p>
       </div>
     </article>
   `
 }
 
-function messageHistoryItem(message) {
+function messageThreadItem(thread) {
+  const starter = thread.messages[0]
+  return `
+    <section class="message-thread">
+      <div class="thread-title">
+        <strong>${escapeHtml(truncateText(starter.text, 26))}</strong>
+        <span>${thread.messages.length} 条对话</span>
+      </div>
+      <div class="thread-bubbles">
+        ${thread.messages.map(messageBubble).join('')}
+      </div>
+    </section>
+  `
+}
+
+function messageBubble(message) {
+  const parent = message.replyTo ? state.messages.find((item) => item.id === message.replyTo) : null
   return `
     <article class="message-history-item ${message.author}">
       <img src="${authorAvatar(message.author)}" alt="" />
       <div>
         <div class="message-line">
           <strong>${escapeHtml(COOKS[message.author] || '留言')}</strong>
-          <span>${escapeHtml(timeText(message.createdAt))}</span>
+          <span>${escapeHtml(timeText(message.createdAt))}${message.updatedAt ? ' · 已修改' : ''}</span>
         </div>
-        ${message.replyTo ? `<em>回复：${escapeHtml(truncateText(message.replyTo, 34))}</em>` : ''}
+        ${parent ? `<em>回复：${escapeHtml(truncateText(parent.text, 34))}</em>` : ''}
         <p>${escapeHtml(message.text)}</p>
-        <button type="button" data-reply-message="${message.id}">回复</button>
+        <div class="message-actions">
+          <button type="button" data-reply-message="${message.id}">回复</button>
+          <button type="button" data-edit-message="${message.id}">修改</button>
+          <button type="button" data-delete-message="${message.id}">删除</button>
+        </div>
       </div>
     </article>
   `
@@ -885,15 +916,32 @@ async function saveMessage(event) {
     showToast('先写一点留言内容')
     return
   }
+  const editingId = els.editingMessageId.value
+  if (editingId) {
+    const message = state.messages.find((item) => item.id === editingId)
+    if (!message) return
+    await put(STORES.messages, {
+      ...message,
+      author: state.messageAuthor,
+      text,
+      updatedAt: new Date().toISOString()
+    })
+    clearMessageDraft()
+    showToast('留言已修改')
+    await refresh()
+    return
+  }
+
   const replyTo = els.replyToMessage.value
   const parent = replyTo ? state.messages.find((item) => item.id === replyTo) : null
   await put(STORES.messages, createMessage({
     author: state.messageAuthor,
     text,
-    replyTo: parent?.text || ''
+    replyTo: parent?.id || '',
+    threadId: parent?.threadId || parent?.id || ''
   }))
   els.messageText.value = ''
-  clearReplyTarget()
+  clearMessageDraft()
   showToast('留言已保存')
   await refresh()
 }
@@ -901,10 +949,14 @@ async function saveMessage(event) {
 function setReplyTarget(id) {
   const message = state.messages.find((item) => item.id === id)
   if (!message) return
+  els.editingMessageId.value = ''
   els.replyToMessage.value = id
+  els.messageText.value = ''
   els.replyHint.textContent = `正在回复：${truncateText(message.text, 36)}`
   els.replyHint.classList.remove('is-hidden')
   els.cancelReply.classList.remove('is-hidden')
+  els.cancelReply.textContent = '取消回复'
+  els.saveMessageButton.textContent = '发布回复'
   els.messageText.focus()
 }
 
@@ -913,6 +965,37 @@ function clearReplyTarget() {
   els.replyHint.textContent = ''
   els.replyHint.classList.add('is-hidden')
   els.cancelReply.classList.add('is-hidden')
+  els.cancelReply.textContent = '取消回复'
+  els.saveMessageButton.textContent = els.editingMessageId.value ? '保存修改' : '发布留言'
+}
+
+function setEditTarget(id) {
+  const message = state.messages.find((item) => item.id === id)
+  if (!message) return
+  els.editingMessageId.value = id
+  els.replyToMessage.value = ''
+  els.messageText.value = message.text
+  setMessageAuthor(message.author)
+  els.replyHint.textContent = `正在修改：${truncateText(message.text, 36)}`
+  els.replyHint.classList.remove('is-hidden')
+  els.cancelReply.classList.remove('is-hidden')
+  els.cancelReply.textContent = '取消修改'
+  els.saveMessageButton.textContent = '保存修改'
+  els.messageText.focus()
+}
+
+function clearMessageDraft() {
+  els.editingMessageId.value = ''
+  els.messageText.value = ''
+  clearReplyTarget()
+}
+
+async function deleteMessage(id) {
+  if (!id || !confirm('确定删除这条留言吗？后续回复会保留在原对话里。')) return
+  await remove(STORES.messages, id)
+  clearMessageDraft()
+  showToast('留言已删除')
+  await refresh()
 }
 
 function recommendedDishes() {
@@ -993,12 +1076,15 @@ function createIngredient(input) {
 }
 
 function createMessage(input) {
+  const id = input.id || crypto.randomUUID()
   return {
-    id: crypto.randomUUID(),
+    id,
+    threadId: input.threadId || id,
     author: input.author || 'rabbit',
     text: input.text || '',
     replyTo: input.replyTo || '',
-    createdAt: input.createdAt || new Date().toISOString()
+    createdAt: input.createdAt || new Date().toISOString(),
+    updatedAt: input.updatedAt || ''
   }
 }
 
@@ -1017,6 +1103,40 @@ function normalizeCheckins(checkins) {
     ...record,
     photos: recordPhotos(record)
   }))
+}
+
+function normalizeMessages(messages) {
+  const sorted = [...messages].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+  const normalized = []
+  sorted.forEach((message) => {
+    const replyParent = message.replyTo
+      ? normalized.find((item) => item.id === message.replyTo || item.text === message.replyTo)
+      : null
+    const threadId = message.threadId || replyParent?.threadId || replyParent?.id || message.id
+    normalized.push({
+      ...message,
+      threadId,
+      replyTo: replyParent ? replyParent.id : message.replyTo && normalized.some((item) => item.id === message.replyTo) ? message.replyTo : '',
+      updatedAt: message.updatedAt || ''
+    })
+  })
+  return normalized
+}
+
+function messageThreads() {
+  const groups = new Map()
+  state.messages.forEach((message) => {
+    const threadId = message.threadId || message.id
+    if (!groups.has(threadId)) groups.set(threadId, [])
+    groups.get(threadId).push(message)
+  })
+
+  return [...groups.entries()]
+    .map(([id, messages]) => ({
+      id,
+      messages: messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    }))
+    .sort((a, b) => new Date(b.messages.at(-1).createdAt) - new Date(a.messages.at(-1).createdAt))
 }
 
 function usage(ingredient, quantity, unit) {
