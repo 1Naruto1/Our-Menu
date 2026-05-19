@@ -1035,8 +1035,12 @@ h2 {
 
 .field-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 0.9fr) minmax(190px, 1.35fr);
   gap: 12px;
+}
+
+#ingredientExpiry {
+  min-width: 168px;
 }
 
 .field input,
@@ -1346,9 +1350,16 @@ h2 {
   .fridge-grid,
   .records-list,
   .message-preview,
-  .detail-photos,
+  .detail-photos {
+    grid-template-columns: 1fr;
+  }
+
   .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  #ingredientExpiry {
+    min-width: 0;
   }
 
   .date-field {
