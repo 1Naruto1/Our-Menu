@@ -1,7 +1,7 @@
 {
   "name": "电子厨房",
   "short_name": "电子厨房",
-  "description": "纯本地 iPad 电子菜单，支持菜品、图片、三餐打卡和备份。",
+  "description": "纯本地 iPad 电子厨房，支持菜单、冰箱食材、保质期提醒、推荐和三餐打卡。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

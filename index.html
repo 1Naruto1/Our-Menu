@@ -19,94 +19,149 @@
       <header class="app-header">
         <div class="brand">
           <img src="./assets/home-badge.png" alt="" />
-          <div class="brand-title-wrap">
-            <input id="appTitleInput" class="app-title-input" value="电子厨房" aria-label="菜单名称" maxlength="12" />
-          </div>
+          <input id="appTitleInput" class="app-title-input" value="电子厨房" aria-label="菜单名称" maxlength="12" />
         </div>
-        <button id="addDishTop" class="primary-button">新增菜品</button>
-      </header>
-
-      <main>
-        <section class="today-panel">
-          <div class="today-copy">
-            <p id="todayText" class="eyebrow"></p>
-            <h2 id="mealTitle">今天想吃什么？</h2>
-          </div>
-          <div class="meal-controls">
-            <label class="checkin-date">
-              <span>打卡日期</span>
-              <input id="checkinDate" type="date" />
-            </label>
-            <div class="meal-tabs" role="tablist" aria-label="餐次">
-              <button class="meal-tab" data-meal="breakfast">
-                <img src="./assets/rabbit-spatula.png" alt="" />
-                <span>早餐</span>
-              </button>
-              <button class="meal-tab is-active" data-meal="lunch">
-                <img src="./assets/tiger-chef.png" alt="" />
-                <span>午餐</span>
-              </button>
-              <button class="meal-tab" data-meal="dinner">
-                <img class="dinner-icon" src="./assets/dinner-badge.png" alt="" />
-                <span>晚餐</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section class="toolbar">
-          <label class="search-box">
-            <span>搜索</span>
-            <input id="searchInput" type="search" placeholder="菜名、食材、标签" autocomplete="off" />
-          </label>
-          <button id="randomPick" class="secondary-button">随机点菜</button>
+        <div class="header-actions">
           <button id="exportData" class="secondary-button">导出备份</button>
           <label class="secondary-button file-button">
             导入备份
             <input id="importData" type="file" accept="application/json" />
           </label>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero-panel">
+          <div class="hero-main">
+            <div class="card-head">
+              <div class="head-title">
+                <img src="./assets/image 提醒.png" alt="" />
+                <div>
+                  <p class="eyebrow">食材提醒</p>
+                  <h2>3天内要用的食材</h2>
+                </div>
+              </div>
+              <button class="ghost-button" data-view="fridge">查看冰箱</button>
+            </div>
+            <div id="alertRow" class="alert-row"></div>
+          </div>
+
+          <aside class="recommend-panel">
+            <div class="card-head">
+              <div class="head-title">
+                <img src="./assets/dinner-badge.png" alt="" />
+                <div>
+                  <p class="eyebrow">今日推荐</p>
+                  <h3 id="heroRecommendTitle">先补一点库存</h3>
+                </div>
+              </div>
+              <button class="ghost-button" data-view="menu">去菜单</button>
+            </div>
+            <p id="heroRecommendText">添加食材和菜品后，这里会自动推荐优先安排的菜。</p>
+            <div id="heroRecommendTags" class="recommend-tags"></div>
+          </aside>
         </section>
 
-        <section id="recommendation" class="recommendation is-hidden" aria-live="polite"></section>
+        <section class="main-tabs" aria-label="主功能切换">
+          <button class="is-active" data-view="menu">
+            <img src="./assets/menu-tab.png" alt="" />
+            菜单
+          </button>
+          <button data-view="fridge">
+            <img src="./assets/fridge-tab.png" alt="" />
+            冰箱
+          </button>
+        </section>
 
-        <section class="content-layout">
-          <section id="dishGrid" class="dish-grid"></section>
-
-          <section class="records-panel">
-            <div class="section-head">
+        <section class="view-stage menu-view">
+          <div class="view-head">
+            <div class="head-title">
+              <img src="./assets/menu-tab.png" alt="" />
               <div>
-                <p class="eyebrow">打卡记录</p>
-                <h2>三餐记录</h2>
+                <p class="eyebrow">菜单页</p>
+                <h2>菜品菜单</h2>
               </div>
-              <input id="recordDate" class="date-input" type="date" />
             </div>
-            <div id="recordsList" class="records-list"></div>
+            <div id="menuMeta" class="view-meta"></div>
+          </div>
+
+          <section class="toolbar">
+            <label class="search-box">
+              <span>搜索</span>
+              <input id="dishSearch" type="search" placeholder="菜名、食材、标签" autocomplete="off" />
+            </label>
+            <button id="addDish" class="primary-button">添加菜品</button>
           </section>
+
+          <section class="mode-actions">
+            <button class="is-active" data-menu-mode="pinyin">按拼音排序</button>
+            <button data-menu-mode="meal">按餐次归类</button>
+            <button data-menu-mode="recommend">看推荐</button>
+          </section>
+
+          <section id="menuContent" class="content-area"></section>
+        </section>
+
+        <section class="view-stage fridge-view is-hidden">
+          <div class="view-head">
+            <div class="head-title">
+              <img src="./assets/fridge-tab.png" alt="" />
+              <div>
+                <p class="eyebrow">冰箱页</p>
+                <h2>食材库存</h2>
+              </div>
+            </div>
+            <div id="fridgeMeta" class="view-meta"></div>
+          </div>
+
+          <section class="toolbar">
+            <label class="search-box">
+              <span>搜索</span>
+              <input id="ingredientSearch" type="search" placeholder="食材名、余量、保质期" autocomplete="off" />
+            </label>
+            <button id="addIngredient" class="primary-button">添加食材</button>
+          </section>
+
+          <section class="mode-actions">
+            <button class="is-active" data-fridge-mode="expiry">按过期时间排序</button>
+            <button data-fridge-mode="name">按名称排序</button>
+            <button data-fridge-mode="urgent">只看快过期</button>
+          </section>
+
+          <section id="fridgeContent" class="fridge-grid"></section>
+        </section>
+
+        <section class="view-stage records-stage">
+          <div class="view-head">
+            <div>
+              <p class="eyebrow">打卡记录</p>
+              <h2>三餐记录</h2>
+            </div>
+            <label class="date-field">
+              <span>记录日期</span>
+              <input id="recordDate" type="date" />
+            </label>
+          </div>
+          <div id="recordsList" class="records-list"></div>
         </section>
       </main>
-
-      <nav class="bottom-bar" aria-label="快速操作">
-        <button data-jump="menu" class="bottom-action is-active">菜单</button>
-        <button data-jump="records" class="bottom-action">记录</button>
-        <button id="addDishBottom" class="bottom-action accent">新增</button>
-      </nav>
     </div>
 
-    <dialog id="dishDialog" class="dish-dialog">
+    <dialog id="dishDialog" class="app-dialog">
       <form id="dishForm" method="dialog">
         <div class="dialog-head">
           <div>
             <p class="eyebrow">菜品资料</p>
-            <h2 id="dialogTitle">新增菜品</h2>
+            <h2 id="dishDialogTitle">添加菜品</h2>
           </div>
-          <button type="button" id="closeDialog" class="icon-button" aria-label="关闭">×</button>
+          <button type="button" id="closeDishDialog" class="icon-button" aria-label="关闭">×</button>
         </div>
 
         <input id="dishId" type="hidden" />
 
         <label class="image-picker">
-          <img id="imagePreview" alt="" />
-          <span id="imageHint">选择菜品图片</span>
+          <img id="dishImagePreview" alt="" />
+          <span id="dishImageHint">选择菜品图片</span>
           <input id="dishImage" type="file" accept="image/*" />
         </label>
 
@@ -115,22 +170,22 @@
           <input id="dishName" required placeholder="例如：番茄炒蛋" />
         </label>
 
+        <fieldset class="meal-field">
+          <legend>适合餐次，可多选</legend>
+          <label><input type="checkbox" name="dishMealType" value="breakfast" />早餐</label>
+          <label><input type="checkbox" name="dishMealType" value="lunch" checked />午餐</label>
+          <label><input type="checkbox" name="dishMealType" value="dinner" checked />晚餐</label>
+        </fieldset>
+
         <label class="field">
-          <span>主要食材</span>
-          <input id="dishIngredients" placeholder="用顿号或逗号分隔，例如：番茄、鸡蛋" />
+          <span>食材与用量</span>
+          <textarea id="dishIngredients" rows="4" placeholder="每行一个，例如：&#10;番茄 2 个&#10;鸡蛋 3 个"></textarea>
         </label>
 
         <label class="field">
           <span>分类 / 标签</span>
           <input id="dishCategory" placeholder="例如：家常菜、快手、清淡" />
         </label>
-
-        <fieldset class="meal-field">
-          <legend>适合餐次</legend>
-          <label><input type="checkbox" name="mealType" value="breakfast" />早餐</label>
-          <label><input type="checkbox" name="mealType" value="lunch" checked />午餐</label>
-          <label><input type="checkbox" name="mealType" value="dinner" checked />晚餐</label>
-        </fieldset>
 
         <label class="field">
           <span>备注</span>
@@ -144,17 +199,73 @@
       </form>
     </dialog>
 
-    <dialog id="reviewDialog" class="review-dialog">
-      <form id="reviewForm" method="dialog">
+    <dialog id="ingredientDialog" class="app-dialog">
+      <form id="ingredientForm" method="dialog">
         <div class="dialog-head">
           <div>
-            <p class="eyebrow">用餐评价</p>
-            <h2 id="reviewDishName">评价这道菜</h2>
+            <p class="eyebrow">冰箱食材</p>
+            <h2 id="ingredientDialogTitle">添加食材</h2>
           </div>
-          <button type="button" id="closeReviewDialog" class="icon-button" aria-label="关闭">×</button>
+          <button type="button" id="closeIngredientDialog" class="icon-button" aria-label="关闭">×</button>
         </div>
 
-        <input id="reviewRating" type="hidden" value="5" />
+        <input id="ingredientId" type="hidden" />
+
+        <label class="image-picker">
+          <img id="ingredientImagePreview" alt="" />
+          <span id="ingredientImageHint">选择食材图片</span>
+          <input id="ingredientImage" type="file" accept="image/*" />
+        </label>
+
+        <label class="field">
+          <span>食材名</span>
+          <input id="ingredientName" required placeholder="例如：青菜" />
+        </label>
+
+        <div class="field-grid">
+          <label class="field">
+            <span>余量</span>
+            <input id="ingredientQuantity" inputmode="decimal" placeholder="例如：1" />
+          </label>
+          <label class="field">
+            <span>单位</span>
+            <input id="ingredientUnit" placeholder="把 / 个 / 盒" />
+          </label>
+          <label class="field">
+            <span>保质期</span>
+            <input id="ingredientExpiry" type="date" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>备注</span>
+          <textarea id="ingredientNote" rows="3" placeholder="购买位置、冷藏方式、需要优先消耗等"></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button id="deleteIngredient" type="button" class="danger-button is-hidden">删除</button>
+          <button type="submit" class="primary-button">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="checkinDialog" class="app-dialog checkin-dialog">
+      <form id="checkinForm" method="dialog">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">三餐打卡</p>
+            <h2 id="checkinTitle">记录这顿饭</h2>
+          </div>
+          <button type="button" id="closeCheckinDialog" class="icon-button" aria-label="关闭">×</button>
+        </div>
+
+        <label class="date-field wide">
+          <span>打卡日期</span>
+          <input id="checkinDate" type="date" />
+        </label>
+
+        <input id="checkinRating" type="hidden" value="5" />
+        <input id="checkinCook" type="hidden" value="together" />
 
         <div class="rating-field">
           <span>评分</span>
@@ -167,13 +278,20 @@
           </div>
         </div>
 
+        <div class="cook-picker">
+          <span>这顿饭是谁做的？</span>
+          <button type="button" data-cook="rabbit"><img src="./assets/rabbit-spatula.png" alt="" />兔兔</button>
+          <button type="button" data-cook="tiger"><img src="./assets/tiger-chef.png" alt="" />虎虎</button>
+          <button type="button" data-cook="together">一起</button>
+        </div>
+
         <label class="field">
           <span>评论</span>
-          <textarea id="reviewComment" rows="4" placeholder="例如：今天火候刚好，下次可以少放一点盐"></textarea>
+          <textarea id="checkinComment" rows="4" placeholder="例如：今天火候刚好，下次可以少放一点盐"></textarea>
         </label>
 
         <div class="dialog-actions">
-          <button type="submit" class="primary-button">保存评价</button>
+          <button type="submit" class="primary-button">保存打卡</button>
         </div>
       </form>
     </dialog>

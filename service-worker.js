@@ -1,4 +1,4 @@
-const CACHE_NAME = 'electronic-kitchen-kawaii-v9'
+const CACHE_NAME = 'electronic-kitchen-kawaii-v10'
 const ASSETS = [
   './',
   './index.html',
@@ -12,7 +12,10 @@ const ASSETS = [
   './assets/home-badge.png',
   './assets/rabbit-spatula.png',
   './assets/tiger-chef.png',
-  './assets/dinner-badge.png'
+  './assets/dinner-badge.png',
+  './assets/menu-tab.png',
+  './assets/fridge-tab.png',
+  './assets/image 提醒.png'
 ]
 
 self.addEventListener('install', (event) => {

@@ -1,65 +1,96 @@
 const DB_NAME = 'electronic-kitchen-local'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const TITLE_KEY = 'electronic-kitchen-title'
 const STORES = {
   dishes: 'dishes',
+  ingredients: 'ingredients',
   checkins: 'checkins'
 }
 
 const MEALS = [
-  { key: 'breakfast', label: '早餐', icon: './assets/rabbit-spatula.png' },
-  { key: 'lunch', label: '午餐', icon: './assets/tiger-chef.png' },
-  { key: 'dinner', label: '晚餐', icon: './assets/dinner-badge.png' }
+  { key: 'breakfast', label: '早餐' },
+  { key: 'lunch', label: '午餐' },
+  { key: 'dinner', label: '晚餐' }
 ]
+
+const COOKS = {
+  rabbit: '兔兔',
+  tiger: '虎虎',
+  together: '一起'
+}
 
 const state = {
   dishes: [],
+  ingredients: [],
   checkins: [],
-  activeMeal: 'lunch',
-  keyword: '',
-  recordDate: formatDate(new Date())
+  activeView: 'menu',
+  menuMode: 'pinyin',
+  fridgeMode: 'expiry',
+  dishKeyword: '',
+  ingredientKeyword: '',
+  recordDate: formatDate(new Date()),
+  pendingDishImage: '',
+  pendingIngredientImage: '',
+  pendingCheckin: null
 }
 
 const els = {
-  addDishBottom: document.querySelector('#addDishBottom'),
-  addDishTop: document.querySelector('#addDishTop'),
+  addDish: document.querySelector('#addDish'),
+  addIngredient: document.querySelector('#addIngredient'),
+  alertRow: document.querySelector('#alertRow'),
   appTitleInput: document.querySelector('#appTitleInput'),
+  checkinComment: document.querySelector('#checkinComment'),
+  checkinCook: document.querySelector('#checkinCook'),
   checkinDate: document.querySelector('#checkinDate'),
-  closeDialog: document.querySelector('#closeDialog'),
+  checkinDialog: document.querySelector('#checkinDialog'),
+  checkinForm: document.querySelector('#checkinForm'),
+  checkinRating: document.querySelector('#checkinRating'),
+  checkinTitle: document.querySelector('#checkinTitle'),
+  closeCheckinDialog: document.querySelector('#closeCheckinDialog'),
+  closeDishDialog: document.querySelector('#closeDishDialog'),
+  closeIngredientDialog: document.querySelector('#closeIngredientDialog'),
   deleteDish: document.querySelector('#deleteDish'),
-  dialog: document.querySelector('#dishDialog'),
-  dialogTitle: document.querySelector('#dialogTitle'),
+  deleteIngredient: document.querySelector('#deleteIngredient'),
   dishCategory: document.querySelector('#dishCategory'),
+  dishDialog: document.querySelector('#dishDialog'),
+  dishDialogTitle: document.querySelector('#dishDialogTitle'),
   dishForm: document.querySelector('#dishForm'),
-  dishGrid: document.querySelector('#dishGrid'),
   dishId: document.querySelector('#dishId'),
   dishImage: document.querySelector('#dishImage'),
+  dishImageHint: document.querySelector('#dishImageHint'),
+  dishImagePreview: document.querySelector('#dishImagePreview'),
   dishIngredients: document.querySelector('#dishIngredients'),
   dishName: document.querySelector('#dishName'),
   dishNote: document.querySelector('#dishNote'),
+  dishSearch: document.querySelector('#dishSearch'),
   exportData: document.querySelector('#exportData'),
-  imageHint: document.querySelector('#imageHint'),
-  imagePreview: document.querySelector('#imagePreview'),
+  fridgeContent: document.querySelector('#fridgeContent'),
+  fridgeMeta: document.querySelector('#fridgeMeta'),
+  heroRecommendTags: document.querySelector('#heroRecommendTags'),
+  heroRecommendText: document.querySelector('#heroRecommendText'),
+  heroRecommendTitle: document.querySelector('#heroRecommendTitle'),
   importData: document.querySelector('#importData'),
-  mealTitle: document.querySelector('#mealTitle'),
-  randomPick: document.querySelector('#randomPick'),
-  recommendation: document.querySelector('#recommendation'),
+  ingredientDialog: document.querySelector('#ingredientDialog'),
+  ingredientDialogTitle: document.querySelector('#ingredientDialogTitle'),
+  ingredientExpiry: document.querySelector('#ingredientExpiry'),
+  ingredientForm: document.querySelector('#ingredientForm'),
+  ingredientId: document.querySelector('#ingredientId'),
+  ingredientImage: document.querySelector('#ingredientImage'),
+  ingredientImageHint: document.querySelector('#ingredientImageHint'),
+  ingredientImagePreview: document.querySelector('#ingredientImagePreview'),
+  ingredientName: document.querySelector('#ingredientName'),
+  ingredientNote: document.querySelector('#ingredientNote'),
+  ingredientQuantity: document.querySelector('#ingredientQuantity'),
+  ingredientSearch: document.querySelector('#ingredientSearch'),
+  ingredientUnit: document.querySelector('#ingredientUnit'),
+  menuContent: document.querySelector('#menuContent'),
+  menuMeta: document.querySelector('#menuMeta'),
   recordDate: document.querySelector('#recordDate'),
   recordsList: document.querySelector('#recordsList'),
-  closeReviewDialog: document.querySelector('#closeReviewDialog'),
-  reviewComment: document.querySelector('#reviewComment'),
-  reviewDialog: document.querySelector('#reviewDialog'),
-  reviewDishName: document.querySelector('#reviewDishName'),
-  reviewForm: document.querySelector('#reviewForm'),
-  reviewRating: document.querySelector('#reviewRating'),
-  searchInput: document.querySelector('#searchInput'),
-  toast: document.querySelector('#toast'),
-  todayText: document.querySelector('#todayText')
+  toast: document.querySelector('#toast')
 }
 
 let db
-let pendingImageData = ''
-let pendingReview = null
 let toastTimer
 
 init()
@@ -78,21 +109,65 @@ async function init() {
 }
 
 function bindEvents() {
-  els.addDishTop.addEventListener('click', () => openDishDialog())
-  els.addDishBottom.addEventListener('click', () => openDishDialog())
-  els.closeDialog.addEventListener('click', () => els.dialog.close())
-  els.dishForm.addEventListener('submit', saveDishFromForm)
-  els.deleteDish.addEventListener('click', deleteCurrentDish)
-  els.dishImage.addEventListener('change', handleImagePick)
-  els.closeReviewDialog.addEventListener('click', () => els.reviewDialog.close())
-  els.reviewForm.addEventListener('submit', saveReview)
-  els.searchInput.addEventListener('input', (event) => {
-    state.keyword = event.target.value.trim().toLowerCase()
-    renderDishes()
+  document.querySelectorAll('[data-view]').forEach((button) => {
+    button.addEventListener('click', () => switchView(button.dataset.view))
   })
-  els.randomPick.addEventListener('click', randomPick)
-  els.checkinDate.addEventListener('change', () => setSelectedDate(els.checkinDate.value))
-  els.recordDate.addEventListener('change', () => setSelectedDate(els.recordDate.value))
+
+  document.querySelectorAll('[data-menu-mode]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.menuMode = button.dataset.menuMode
+      document.querySelectorAll('[data-menu-mode]').forEach((item) => item.classList.toggle('is-active', item === button))
+      renderMenu()
+    })
+  })
+
+  document.querySelectorAll('[data-fridge-mode]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.fridgeMode = button.dataset.fridgeMode
+      document.querySelectorAll('[data-fridge-mode]').forEach((item) => item.classList.toggle('is-active', item === button))
+      renderFridge()
+    })
+  })
+
+  document.querySelectorAll('[data-star]').forEach((button) => {
+    button.addEventListener('click', () => setRating(Number(button.dataset.star)))
+  })
+
+  document.querySelectorAll('[data-cook]').forEach((button) => {
+    button.addEventListener('click', () => setCook(button.dataset.cook))
+  })
+
+  els.addDish.addEventListener('click', () => openDishDialog())
+  els.addIngredient.addEventListener('click', () => openIngredientDialog())
+  els.closeDishDialog.addEventListener('click', () => els.dishDialog.close())
+  els.closeIngredientDialog.addEventListener('click', () => els.ingredientDialog.close())
+  els.closeCheckinDialog.addEventListener('click', () => els.checkinDialog.close())
+  els.deleteDish.addEventListener('click', deleteCurrentDish)
+  els.deleteIngredient.addEventListener('click', deleteCurrentIngredient)
+  els.dishForm.addEventListener('submit', saveDishFromForm)
+  els.ingredientForm.addEventListener('submit', saveIngredientFromForm)
+  els.checkinForm.addEventListener('submit', saveCheckin)
+  els.dishImage.addEventListener('change', async (event) => {
+    state.pendingDishImage = await imageFromEvent(event)
+    updateImagePreview(els.dishImagePreview, els.dishImageHint, state.pendingDishImage)
+  })
+  els.ingredientImage.addEventListener('change', async (event) => {
+    state.pendingIngredientImage = await imageFromEvent(event)
+    updateImagePreview(els.ingredientImagePreview, els.ingredientImageHint, state.pendingIngredientImage)
+  })
+  els.dishSearch.addEventListener('input', () => {
+    state.dishKeyword = els.dishSearch.value.trim().toLowerCase()
+    renderMenu()
+  })
+  els.ingredientSearch.addEventListener('input', () => {
+    state.ingredientKeyword = els.ingredientSearch.value.trim().toLowerCase()
+    renderFridge()
+  })
+  els.recordDate.addEventListener('change', () => {
+    syncSelectedDate(els.recordDate.value)
+    renderRecords()
+  })
+  els.checkinDate.addEventListener('change', () => syncSelectedDate(els.checkinDate.value))
   els.exportData.addEventListener('click', exportData)
   els.importData.addEventListener('change', importData)
   els.appTitleInput.addEventListener('input', updateAppTitle)
@@ -102,50 +177,6 @@ function bindEvents() {
       updateAppTitle()
     }
   })
-
-  document.querySelectorAll('[data-star]').forEach((button) => {
-    button.addEventListener('click', () => setRating(Number(button.dataset.star)))
-  })
-
-  document.querySelectorAll('.meal-tab').forEach((button) => {
-    button.addEventListener('click', () => {
-      state.activeMeal = button.dataset.meal
-      document.querySelectorAll('.meal-tab').forEach((tab) => tab.classList.toggle('is-active', tab === button))
-      renderDishes()
-      hideRecommendation()
-    })
-  })
-
-  document.querySelectorAll('[data-jump]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const target = button.dataset.jump === 'records' ? document.querySelector('.records-panel') : document.querySelector('.today-panel')
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      document.querySelectorAll('[data-jump]').forEach((item) => item.classList.toggle('is-active', item === button))
-    })
-  })
-}
-
-function loadAppTitle() {
-  els.appTitleInput.value = localStorage.getItem(TITLE_KEY) || '电子厨房'
-  updateDocumentTitle()
-}
-
-function updateAppTitle() {
-  const title = els.appTitleInput.value.trim()
-  localStorage.setItem(TITLE_KEY, title || '电子厨房')
-  updateDocumentTitle()
-}
-
-function updateDocumentTitle() {
-  const title = els.appTitleInput.value.trim() || '电子厨房'
-  document.title = title
-}
-
-async function refresh() {
-  state.dishes = await getAll(STORES.dishes)
-  state.checkins = await getAll(STORES.checkins)
-  renderDishes()
-  renderRecords()
 }
 
 function openDatabase() {
@@ -155,6 +186,9 @@ function openDatabase() {
       const database = request.result
       if (!database.objectStoreNames.contains(STORES.dishes)) {
         database.createObjectStore(STORES.dishes, { keyPath: 'id' })
+      }
+      if (!database.objectStoreNames.contains(STORES.ingredients)) {
+        database.createObjectStore(STORES.ingredients, { keyPath: 'id' })
       }
       if (!database.objectStoreNames.contains(STORES.checkins)) {
         database.createObjectStore(STORES.checkins, { keyPath: 'id' })
@@ -202,116 +236,158 @@ function clearStore(storeName) {
 }
 
 async function seedIfEmpty() {
-  const existing = await getAll(STORES.dishes)
-  if (existing.length > 0) return
+  const existingDishes = await getAll(STORES.dishes)
+  const existingIngredients = await getAll(STORES.ingredients)
+  if (existingDishes.length || existingIngredients.length) return
 
+  const today = new Date()
   const samples = [
-    {
-      name: '番茄炒蛋',
-      ingredients: ['番茄', '鸡蛋', '葱'],
-      category: '家常菜',
-      mealTypes: ['lunch', 'dinner'],
-      note: '酸甜口，适合配米饭。',
-      color: '#d95a38'
-    },
-    {
-      name: '鸡蛋三明治',
-      ingredients: ['吐司', '鸡蛋', '生菜'],
-      category: '早餐',
-      mealTypes: ['breakfast'],
-      note: '早上十分钟可以完成。',
-      color: '#d6a43a'
-    },
-    {
+    createIngredient({ name: '青菜', quantity: '1', unit: '把', expiryDate: addDays(today, 1), color: '#6ea577' }),
+    createIngredient({ name: '鸡蛋', quantity: '6', unit: '个', expiryDate: addDays(today, 2), color: '#e8c569' }),
+    createIngredient({ name: '豆腐', quantity: '1', unit: '盒', expiryDate: addDays(today, 3), color: '#d7b996' }),
+    createIngredient({ name: '番茄', quantity: '4', unit: '个', expiryDate: addDays(today, 7), color: '#d95a38' })
+  ]
+  await Promise.all(samples.map((item) => put(STORES.ingredients, item)))
+
+  const findIngredient = (name) => samples.find((item) => item.name === name)
+  const dishes = [
+    createDish({
       name: '青菜豆腐汤',
-      ingredients: ['青菜', '豆腐', '菌菇'],
       category: '清淡',
       mealTypes: ['lunch', 'dinner'],
-      note: '适合想吃得轻一点的时候。',
-      color: '#4c9b67'
-    }
-  ]
-
-  await Promise.all(samples.map((sample) => put(STORES.dishes, createDish(sample))))
-}
-
-function createDish(input) {
-  const now = new Date().toISOString()
-  return {
-    id: crypto.randomUUID(),
-    name: input.name,
-    ingredients: input.ingredients || [],
-    category: input.category || '',
-    mealTypes: input.mealTypes || ['lunch', 'dinner'],
-    note: input.note || '',
-    imageData: input.imageData || '',
-    color: input.color || '#d9c4a3',
-    createdAt: now,
-    updatedAt: now
-  }
-}
-
-function renderDishes() {
-  const meal = MEALS.find((item) => item.key === state.activeMeal)
-  els.mealTitle.textContent = isToday(state.recordDate) ? '今天想吃什么？' : '这天吃了什么？'
-
-  const visible = state.dishes
-    .filter((dish) => dish.mealTypes.includes(state.activeMeal))
-    .filter((dish) => {
-      if (!state.keyword) return true
-      return [dish.name, dish.category, ...dish.ingredients].join(' ').toLowerCase().includes(state.keyword)
+      ingredientUsages: [
+        usage(findIngredient('青菜'), '1', '把'),
+        usage(findIngredient('豆腐'), '1', '盒')
+      ],
+      note: '优先消耗快过期青菜。'
+    }),
+    createDish({
+      name: '番茄炒蛋',
+      category: '家常菜',
+      mealTypes: ['lunch', 'dinner'],
+      ingredientUsages: [
+        usage(findIngredient('番茄'), '2', '个'),
+        usage(findIngredient('鸡蛋'), '3', '个')
+      ],
+      note: '酸甜口，适合配米饭。'
+    }),
+    createDish({
+      name: '鸡蛋三明治',
+      category: '早餐',
+      mealTypes: ['breakfast'],
+      ingredientUsages: [usage(findIngredient('鸡蛋'), '2', '个')],
+      note: '早上十分钟可以完成。'
     })
-    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+  ]
+  await Promise.all(dishes.map((dish) => put(STORES.dishes, dish)))
+}
 
-  if (visible.length === 0) {
-    els.dishGrid.innerHTML = `
-      <div class="empty-state">
-        <div>
-          <h2>这里还没有菜</h2>
-          <p>新增一道适合${meal.label}的菜，它就会出现在这里。</p>
-        </div>
-      </div>
-    `
+async function refresh() {
+  state.dishes = normalizeDishes(await getAll(STORES.dishes))
+  state.ingredients = await getAll(STORES.ingredients)
+  state.checkins = await getAll(STORES.checkins)
+  renderAll()
+}
+
+function renderAll() {
+  renderHero()
+  renderMenu()
+  renderFridge()
+  renderRecords()
+}
+
+function renderHero() {
+  const urgent = getUrgentIngredients().slice(0, 3)
+  els.alertRow.innerHTML = urgent.length
+    ? urgent.map((item) => `
+      <article class="alert-card ${daysUntil(item.expiryDate) <= 1 ? 'urgent' : ''}">
+        <span>${expiryText(item.expiryDate)}</span>
+        <strong>${escapeHtml(item.name)}</strong>
+        <em>剩 ${escapeHtml(quantityText(item))}</em>
+      </article>
+    `).join('')
+    : '<article class="alert-card empty-alert"><strong>暂无快过期食材</strong><em>冰箱状态很轻松</em></article>'
+
+  const [best] = recommendedDishes()
+  if (!best) {
+    els.heroRecommendTitle.textContent = '先补一点库存'
+    els.heroRecommendText.textContent = '添加食材和菜品后，这里会自动推荐优先安排的菜。'
+    els.heroRecommendTags.innerHTML = ''
     return
   }
 
-  els.dishGrid.innerHTML = visible.map((dish) => dishCard(dish)).join('')
-  els.dishGrid.querySelectorAll('[data-edit]').forEach((button) => {
-    button.addEventListener('click', () => openDishDialog(button.dataset.edit))
+  els.heroRecommendTitle.textContent = best.dish.name
+  els.heroRecommendText.textContent = recommendationReason(best)
+  els.heroRecommendTags.innerHTML = [
+    best.missing.length ? `缺 ${best.missing.length} 种` : '可做',
+    best.urgentHits ? `消耗 ${best.urgentHits} 种快过期食材` : '适合安排'
+  ].map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')
+}
+
+function renderMenu() {
+  const dishes = filteredDishes()
+  const availableCount = state.dishes.filter((dish) => availabilityForDish(dish).missing.length === 0).length
+  els.menuMeta.innerHTML = `
+    <span>${state.dishes.length} 道菜</span>
+    <span>${availableCount} 道冰箱可做</span>
+  `
+
+  if (!dishes.length) {
+    els.menuContent.innerHTML = emptyState('还没有符合条件的菜', '添加菜品后，可以按拼音、餐次和推荐来查看。')
+    return
+  }
+
+  if (state.menuMode === 'meal') {
+    els.menuContent.innerHTML = MEALS.map((meal) => {
+      const group = dishes.filter((dish) => dish.mealTypes.includes(meal.key))
+      if (!group.length) return ''
+      return groupSection(meal.label, dishGrid(group))
+    }).join('')
+  } else if (state.menuMode === 'recommend') {
+    const ranked = recommendedDishes().filter((item) => dishes.some((dish) => dish.id === item.dish.id)).map((item) => item.dish)
+    els.menuContent.innerHTML = groupSection('今日推荐', dishGrid(ranked))
+  } else {
+    els.menuContent.innerHTML = groupSection('按拼音排序', dishGrid(sortByPinyin(dishes)))
+  }
+
+  els.menuContent.querySelectorAll('[data-edit-dish]').forEach((button) => {
+    button.addEventListener('click', () => openDishDialog(button.dataset.editDish))
   })
-  els.dishGrid.querySelectorAll('[data-checkin]').forEach((button) => {
-    button.addEventListener('click', () => checkin(button.dataset.checkin))
+  els.menuContent.querySelectorAll('[data-checkin]').forEach((button) => {
+    button.addEventListener('click', () => openCheckinDialog(button.dataset.checkin, button.dataset.meal))
   })
 }
 
-function dishCard(dish) {
-  const activeMeal = MEALS.find((meal) => meal.key === state.activeMeal)
-  const image = dish.imageData
-    ? `<img class="dish-photo" src="${dish.imageData}" alt="${escapeHtml(dish.name)}" />`
-    : `<div class="dish-placeholder" style="background:${dish.color}">无图</div>`
-  const tags = [
-    dish.category,
-    ...dish.mealTypes.map((key) => MEALS.find((meal) => meal.key === key)?.label)
-  ].filter(Boolean)
-  const count = state.checkins.filter((item) => item.dishId === dish.id).length
-  return `
-    <article class="dish-card">
-      ${image}
-      <div class="dish-body">
-        <div class="dish-topline">
-          <h3 class="dish-name">${escapeHtml(dish.name)}</h3>
-          <button class="tiny-button" data-edit="${dish.id}">编辑</button>
-        </div>
-        <p class="dish-meta">${escapeHtml(dish.ingredients.join('、') || '未填写主要食材')}</p>
-        <div class="tag-row">${tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>
-        <button class="checkin-button" data-checkin="${dish.id}">
-          <img class="${state.activeMeal === 'dinner' ? 'dinner-icon' : ''}" src="${activeMeal.icon}" alt="" />
-          <span>记为${activeMeal.label}</span>
-        </button>
-        <div class="dish-count">${count} 次打卡</div>
-      </div>
-    </article>
+function renderFridge() {
+  let ingredients = [...state.ingredients]
+  if (state.ingredientKeyword) {
+    ingredients = ingredients.filter((item) => {
+      return [item.name, item.quantity, item.unit, item.note].join(' ').toLowerCase().includes(state.ingredientKeyword)
+    })
+  }
+  if (state.fridgeMode === 'urgent') {
+    ingredients = ingredients.filter((item) => daysUntil(item.expiryDate) <= 3)
+  }
+  if (state.fridgeMode === 'name') {
+    ingredients = sortByPinyin(ingredients)
+  } else {
+    ingredients.sort((a, b) => expiryValue(a.expiryDate) - expiryValue(b.expiryDate))
+  }
+
+  els.fridgeMeta.innerHTML = `
+    <span>${state.ingredients.length} 种食材</span>
+    <span>${getUrgentIngredients().length} 种快过期</span>
   `
+
+  if (!ingredients.length) {
+    els.fridgeContent.innerHTML = emptyState('冰箱里还没有食材', '添加食材、余量和保质期后，就能自动提醒和推荐。')
+    return
+  }
+
+  els.fridgeContent.innerHTML = ingredients.map((item) => ingredientCard(item)).join('')
+  els.fridgeContent.querySelectorAll('[data-edit-ingredient]').forEach((button) => {
+    button.addEventListener('click', () => openIngredientDialog(button.dataset.editIngredient))
+  })
 }
 
 function renderRecords() {
@@ -320,14 +396,11 @@ function renderRecords() {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
   els.recordsList.innerHTML = MEALS.map((meal) => {
-    const mealRecords = records.filter((record) => record.mealType === meal.key)
-    const content = mealRecords.length
-      ? mealRecords.map((record) => recordItem(record)).join('')
-      : '<p class="muted">还没有记录</p>'
+    const items = records.filter((record) => record.mealType === meal.key)
     return `
       <section class="record-column">
         <h3>${meal.label}</h3>
-        ${content}
+        ${items.length ? items.map(recordItem).join('') : '<p class="muted">还没有记录</p>'}
       </section>
     `
   }).join('')
@@ -335,94 +408,152 @@ function renderRecords() {
   els.recordsList.querySelectorAll('[data-delete-record]').forEach((button) => {
     button.addEventListener('click', () => deleteCheckin(button.dataset.deleteRecord))
   })
-  els.recordsList.querySelectorAll('[data-review-record]').forEach((button) => {
-    button.addEventListener('click', () => openReviewDialogForRecord(button.dataset.reviewRecord))
+  els.recordsList.querySelectorAll('[data-edit-record]').forEach((button) => {
+    button.addEventListener('click', () => openCheckinDialog('', '', button.dataset.editRecord))
   })
 }
 
+function switchView(view) {
+  state.activeView = view
+  document.querySelectorAll('.menu-view').forEach((item) => item.classList.toggle('is-hidden', view !== 'menu'))
+  document.querySelector('.fridge-view').classList.toggle('is-hidden', view !== 'fridge')
+  document.querySelectorAll('.main-tabs [data-view]').forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.view === view)
+  })
+}
+
+function filteredDishes() {
+  if (!state.dishKeyword) return [...state.dishes]
+  return state.dishes.filter((dish) => {
+    const text = [
+      dish.name,
+      dish.category,
+      dish.note,
+      ...dish.mealTypes.map(mealLabel),
+      ...dish.ingredientUsages.map((item) => `${item.name} ${item.quantity} ${item.unit}`)
+    ].join(' ').toLowerCase()
+    return text.includes(state.dishKeyword)
+  })
+}
+
+function dishGrid(dishes) {
+  return `<div class="dish-grid">${dishes.map(dishCard).join('')}</div>`
+}
+
+function groupSection(title, content) {
+  return `
+    <div class="group-head">
+      <span>${escapeHtml(title)}</span>
+      <hr />
+    </div>
+    ${content}
+  `
+}
+
+function dishCard(dish) {
+  const availability = availabilityForDish(dish)
+  const tags = [
+    availability.missing.length ? `缺 ${availability.missing.join('、')}` : '冰箱可做',
+    ...dish.mealTypes.map(mealLabel)
+  ]
+  const image = dish.imageData
+    ? `<img class="dish-photo" src="${dish.imageData}" alt="${escapeHtml(dish.name)}" />`
+    : `<div class="dish-placeholder">无图</div>`
+  const ingredientText = dish.ingredientUsages.map((item) => `${item.name} ${item.quantity}${item.unit}`).join('、') || '未填写食材'
+  return `
+    <article class="dish-card">
+      ${image}
+      <div class="dish-body">
+        <div class="dish-title">
+          <h3>${escapeHtml(dish.name)}</h3>
+          <button data-edit-dish="${dish.id}">编辑</button>
+        </div>
+        <p>${escapeHtml(ingredientText)}</p>
+        <div class="status-row">${tags.map((tag, index) => `<span class="${index === 0 && !availability.missing.length ? 'ok' : index === 0 ? 'missing' : ''}">${escapeHtml(tag)}</span>`).join('')}</div>
+        <div class="checkin-row">
+          ${MEALS.map((meal) => `<button data-checkin="${dish.id}" data-meal="${meal.key}">记为${meal.label}</button>`).join('')}
+        </div>
+      </div>
+    </article>
+  `
+}
+
+function ingredientCard(item) {
+  const linked = state.dishes.filter((dish) => dish.ingredientUsages.some((usageItem) => sameName(usageItem.name, item.name)))
+  const image = item.imageData
+    ? `<img class="ingredient-photo image" src="${item.imageData}" alt="${escapeHtml(item.name)}" />`
+    : `<div class="ingredient-photo" style="background:${escapeHtml(item.color || '#83ad8d')}">${escapeHtml(item.name.slice(0, 1))}</div>`
+  return `
+    <article class="ingredient-card ${daysUntil(item.expiryDate) <= 3 ? 'urgent' : ''}">
+      ${image}
+      <div class="ingredient-copy">
+        <div class="ingredient-title">
+          <strong>${escapeHtml(item.name)}</strong>
+          <button data-edit-ingredient="${item.id}">编辑</button>
+        </div>
+        <span>剩 ${escapeHtml(quantityText(item))}</span>
+        <em>${escapeHtml(expiryText(item.expiryDate))}</em>
+        <p>关联菜品：${escapeHtml(linked.map((dish) => dish.name).join('、') || '暂无')}</p>
+      </div>
+    </article>
+  `
+}
+
 function recordItem(record) {
-  const image = record.imageData
-    ? `<img class="record-thumb" src="${record.imageData}" alt="" />`
-    : '<div class="record-thumb"></div>'
-  const rating = Number(record.rating || 0)
-  const comment = record.comment ? `<div class="record-comment">${escapeHtml(record.comment)}</div>` : ''
   return `
     <div class="record-item">
-      ${image}
+      <div class="record-thumb">${escapeHtml((COOKS[record.cook] || '饭').slice(0, 1))}</div>
       <div class="record-main">
         <div class="record-name">${escapeHtml(record.dishName)}</div>
-        <div class="record-rating">${rating ? starsText(rating) : '未评价'}</div>
-        ${comment}
+        <div class="record-rating">${starsText(record.rating)} · ${escapeHtml(COOKS[record.cook] || '未记录做饭人')}</div>
+        ${record.comment ? `<div class="record-comment">${escapeHtml(record.comment)}</div>` : ''}
       </div>
       <div class="record-actions">
-        <button class="record-review" data-review-record="${record.id}">${rating ? '修改' : '评价'}</button>
-        <button class="record-delete" data-delete-record="${record.id}" aria-label="删除${escapeHtml(record.dishName)}的打卡记录">删除</button>
+        <button class="record-review" data-edit-record="${record.id}">修改</button>
+        <button class="record-delete" data-delete-record="${record.id}">删除</button>
       </div>
     </div>
   `
 }
 
-async function deleteCheckin(id) {
-  if (!id) return
-  if (!confirm('确定删除这条打卡记录吗？')) return
-  await remove(STORES.checkins, id)
-  showToast('打卡记录已删除')
-  await refresh()
-}
-
 function openDishDialog(id = '') {
   const dish = id ? state.dishes.find((item) => item.id === id) : null
-  pendingImageData = dish?.imageData || ''
-  els.dialogTitle.textContent = dish ? '编辑菜品' : '新增菜品'
+  state.pendingDishImage = dish?.imageData || ''
+  els.dishDialogTitle.textContent = dish ? '编辑菜品' : '添加菜品'
   els.dishId.value = dish?.id || ''
   els.dishName.value = dish?.name || ''
-  els.dishIngredients.value = dish?.ingredients.join('、') || ''
   els.dishCategory.value = dish?.category || ''
   els.dishNote.value = dish?.note || ''
+  els.dishIngredients.value = dish ? dish.ingredientUsages.map((item) => `${item.name} ${item.quantity} ${item.unit}`.trim()).join('\n') : ''
   els.deleteDish.classList.toggle('is-hidden', !dish)
-  document.querySelectorAll('[name="mealType"]').forEach((input) => {
+  document.querySelectorAll('[name="dishMealType"]').forEach((input) => {
     input.checked = dish ? dish.mealTypes.includes(input.value) : ['lunch', 'dinner'].includes(input.value)
   })
-  updateImagePreview()
-  els.dialog.showModal()
-}
-
-async function handleImagePick(event) {
-  const file = event.target.files[0]
-  if (!file) return
-  pendingImageData = await fileToDataUrl(file)
-  updateImagePreview()
-}
-
-function updateImagePreview() {
-  els.imagePreview.src = pendingImageData
-  els.imagePreview.hidden = !pendingImageData
-  els.imageHint.hidden = Boolean(pendingImageData)
+  updateImagePreview(els.dishImagePreview, els.dishImageHint, state.pendingDishImage)
+  els.dishDialog.showModal()
 }
 
 async function saveDishFromForm(event) {
   event.preventDefault()
-  const mealTypes = [...document.querySelectorAll('[name="mealType"]:checked')].map((input) => input.value)
-  if (mealTypes.length === 0) {
+  const mealTypes = [...document.querySelectorAll('[name="dishMealType"]:checked')].map((input) => input.value)
+  if (!mealTypes.length) {
     showToast('请至少选择一个餐次')
     return
   }
-
   const id = els.dishId.value
   const existing = id ? state.dishes.find((dish) => dish.id === id) : null
   const dish = {
     ...(existing || createDish({ name: els.dishName.value.trim() })),
     name: els.dishName.value.trim(),
-    ingredients: parseIngredients(els.dishIngredients.value),
     category: els.dishCategory.value.trim(),
     mealTypes,
+    ingredientUsages: parseIngredientUsages(els.dishIngredients.value),
     note: els.dishNote.value.trim(),
-    imageData: pendingImageData,
+    imageData: state.pendingDishImage,
     updatedAt: new Date().toISOString()
   }
-
   await put(STORES.dishes, dish)
-  els.dialog.close()
+  els.dishDialog.close()
   showToast('菜品已保存')
   await refresh()
 }
@@ -431,132 +562,271 @@ async function deleteCurrentDish() {
   const id = els.dishId.value
   if (!id || !confirm('确定删除这道菜吗？历史打卡记录会保留。')) return
   await remove(STORES.dishes, id)
-  els.dialog.close()
+  els.dishDialog.close()
   showToast('菜品已删除')
   await refresh()
 }
 
-function checkin(dishId) {
-  const dish = state.dishes.find((item) => item.id === dishId)
-  if (!dish) return
-
-  const checkinDate = state.recordDate || formatDate(new Date())
-  const duplicated = state.checkins.some((item) => item.dishId === dishId && item.mealType === state.activeMeal && item.date === checkinDate)
-  const dateText = isToday(checkinDate) ? '今天' : prettyDate(checkinDate)
-  if (duplicated && !confirm(`${dateText}这个餐次已经记录过这道菜，还要再记一次吗？`)) return
-
-  pendingReview = {
-    mode: 'create',
-    dishId: dish.id,
-    date: checkinDate
-  }
-  els.reviewDishName.textContent = `评价：${dish.name}`
-  els.reviewComment.value = ''
-  setRating(5)
-  els.reviewDialog.showModal()
+function openIngredientDialog(id = '') {
+  const item = id ? state.ingredients.find((ingredient) => ingredient.id === id) : null
+  state.pendingIngredientImage = item?.imageData || ''
+  els.ingredientDialogTitle.textContent = item ? '编辑食材' : '添加食材'
+  els.ingredientId.value = item?.id || ''
+  els.ingredientName.value = item?.name || ''
+  els.ingredientQuantity.value = item?.quantity || ''
+  els.ingredientUnit.value = item?.unit || ''
+  els.ingredientExpiry.value = item?.expiryDate || ''
+  els.ingredientNote.value = item?.note || ''
+  els.deleteIngredient.classList.toggle('is-hidden', !item)
+  updateImagePreview(els.ingredientImagePreview, els.ingredientImageHint, state.pendingIngredientImage)
+  els.ingredientDialog.showModal()
 }
 
-async function saveReview(event) {
+async function saveIngredientFromForm(event) {
   event.preventDefault()
-  if (!pendingReview) return
-
-  if (pendingReview.mode === 'edit') {
-    const record = state.checkins.find((item) => item.id === pendingReview.recordId)
-    if (!record) return
-    await put(STORES.checkins, {
-      ...record,
-      rating: Number(els.reviewRating.value),
-      comment: els.reviewComment.value.trim(),
-      updatedAt: new Date().toISOString()
-    })
-    els.reviewDialog.close()
-    pendingReview = null
-    showToast('评价已更新')
-    await refresh()
-    return
+  const id = els.ingredientId.value
+  const existing = id ? state.ingredients.find((item) => item.id === id) : null
+  const ingredient = {
+    ...(existing || createIngredient({ name: els.ingredientName.value.trim() })),
+    name: els.ingredientName.value.trim(),
+    quantity: els.ingredientQuantity.value.trim(),
+    unit: els.ingredientUnit.value.trim(),
+    expiryDate: els.ingredientExpiry.value,
+    note: els.ingredientNote.value.trim(),
+    imageData: state.pendingIngredientImage,
+    updatedAt: new Date().toISOString()
   }
-
-  const dish = state.dishes.find((item) => item.id === pendingReview.dishId)
-  if (!dish) return
-  const checkinDate = pendingReview.date
-  const dateText = isToday(checkinDate) ? '今天' : prettyDate(checkinDate)
-
-  await put(STORES.checkins, {
-    id: crypto.randomUUID(),
-    dishId: dish.id,
-    dishName: dish.name,
-    imageData: dish.imageData || '',
-    mealType: state.activeMeal,
-    date: checkinDate,
-    rating: Number(els.reviewRating.value),
-    comment: els.reviewComment.value.trim(),
-    createdAt: new Date().toISOString()
-  })
-
-  els.reviewDialog.close()
-  pendingReview = null
-  syncSelectedDate(checkinDate)
-  showToast(`已记为${dateText}${mealLabel(state.activeMeal)}`)
+  await put(STORES.ingredients, ingredient)
+  els.ingredientDialog.close()
+  showToast('食材已保存')
   await refresh()
 }
 
-function openReviewDialogForRecord(id) {
-  const record = state.checkins.find((item) => item.id === id)
-  if (!record) return
-  pendingReview = {
-    mode: 'edit',
-    recordId: record.id
+async function deleteCurrentIngredient() {
+  const id = els.ingredientId.value
+  if (!id || !confirm('确定删除这个食材吗？菜品中的用量记录会保留。')) return
+  await remove(STORES.ingredients, id)
+  els.ingredientDialog.close()
+  showToast('食材已删除')
+  await refresh()
+}
+
+function openCheckinDialog(dishId = '', mealType = '', recordId = '') {
+  const record = recordId ? state.checkins.find((item) => item.id === recordId) : null
+  const dish = dishId ? state.dishes.find((item) => item.id === dishId) : null
+  if (!record && !dish) return
+  state.pendingCheckin = record ? { mode: 'edit', recordId } : { mode: 'create', dishId, mealType }
+  els.checkinTitle.textContent = record ? `修改：${record.dishName}` : `记录：${dish.name}`
+  els.checkinComment.value = record?.comment || ''
+  syncSelectedDate(record?.date || state.recordDate)
+  setRating(Number(record?.rating || 5))
+  setCook(record?.cook || 'together')
+  els.checkinDialog.showModal()
+}
+
+async function saveCheckin(event) {
+  event.preventDefault()
+  const pending = state.pendingCheckin
+  if (!pending) return
+
+  if (pending.mode === 'edit') {
+    const record = state.checkins.find((item) => item.id === pending.recordId)
+    if (!record) return
+    await put(STORES.checkins, {
+      ...record,
+      date: els.checkinDate.value || state.recordDate,
+      rating: Number(els.checkinRating.value),
+      cook: els.checkinCook.value,
+      comment: els.checkinComment.value.trim(),
+      updatedAt: new Date().toISOString()
+    })
+    showToast('打卡记录已更新')
+  } else {
+    const dish = state.dishes.find((item) => item.id === pending.dishId)
+    if (!dish) return
+    const date = els.checkinDate.value || state.recordDate
+    const duplicated = state.checkins.some((item) => item.dishId === dish.id && item.mealType === pending.mealType && item.date === date)
+    if (duplicated && !confirm('这一天这个餐次已经记录过这道菜，还要再记一次吗？')) return
+    await put(STORES.checkins, {
+      id: crypto.randomUUID(),
+      dishId: dish.id,
+      dishName: dish.name,
+      mealType: pending.mealType,
+      date,
+      rating: Number(els.checkinRating.value),
+      cook: els.checkinCook.value,
+      comment: els.checkinComment.value.trim(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    })
+    showToast(`已记为${mealLabel(pending.mealType)}`)
   }
-  els.reviewDishName.textContent = `评价：${record.dishName}`
-  els.reviewComment.value = record.comment || ''
-  setRating(Number(record.rating || 5))
-  els.reviewDialog.showModal()
+
+  els.checkinDialog.close()
+  state.pendingCheckin = null
+  syncSelectedDate(els.checkinDate.value || state.recordDate)
+  await refresh()
+}
+
+async function deleteCheckin(id) {
+  if (!id || !confirm('确定删除这条打卡记录吗？')) return
+  await remove(STORES.checkins, id)
+  showToast('打卡记录已删除')
+  await refresh()
 }
 
 function setRating(value) {
   const rating = Math.min(5, Math.max(1, value || 5))
-  els.reviewRating.value = String(rating)
+  els.checkinRating.value = String(rating)
   document.querySelectorAll('[data-star]').forEach((button) => {
     button.classList.toggle('is-active', Number(button.dataset.star) <= rating)
   })
 }
 
-function starsText(value) {
-  const rating = Math.min(5, Math.max(0, Number(value) || 0))
-  return `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`
+function setCook(value) {
+  els.checkinCook.value = value
+  document.querySelectorAll('[data-cook]').forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.cook === value)
+  })
 }
 
-function randomPick() {
-  const candidates = state.dishes.filter((dish) => dish.mealTypes.includes(state.activeMeal))
-  if (candidates.length === 0) {
-    showToast('当前餐次还没有可推荐的菜')
-    return
+function recommendedDishes() {
+  return state.dishes
+    .map((dish) => {
+      const availability = availabilityForDish(dish)
+      const urgentHits = dish.ingredientUsages.filter((usageItem) => {
+        const ingredient = findIngredientByUsage(usageItem)
+        return ingredient && daysUntil(ingredient.expiryDate) <= 3
+      }).length
+      return {
+        dish,
+        missing: availability.missing,
+        urgentHits,
+        score: urgentHits * 5 + availability.available.length * 2 - availability.missing.length * 4
+      }
+    })
+    .sort((a, b) => b.score - a.score || a.missing.length - b.missing.length || comparePinyin(a.dish.name, b.dish.name))
+}
+
+function recommendationReason(item) {
+  if (item.urgentHits > 0 && item.missing.length === 0) {
+    return `这道菜可以消耗快过期食材，冰箱里现在就能做。`
   }
-
-  const recentIds = state.checkins
-    .filter((record) => daysBetween(new Date(record.date), new Date()) <= 3)
-    .map((record) => record.dishId)
-  const fresh = candidates.filter((dish) => !recentIds.includes(dish.id))
-  const pool = fresh.length ? fresh : candidates
-  const dish = pool[Math.floor(Math.random() * pool.length)]
-
-  els.recommendation.innerHTML = `
-    <strong>${escapeHtml(mealLabel(state.activeMeal))}推荐：${escapeHtml(dish.name)}</strong>
-    <span>${escapeHtml(dish.ingredients.join('、') || dish.category || '可以安排上')}</span>
-  `
-  els.recommendation.classList.remove('is-hidden')
+  if (item.missing.length === 0) return '冰箱里的食材已经足够，可以直接安排。'
+  return `还缺 ${item.missing.join('、')}，补齐后就能做。`
 }
 
-function hideRecommendation() {
-  els.recommendation.classList.add('is-hidden')
+function availabilityForDish(dish) {
+  const available = []
+  const missing = []
+  dish.ingredientUsages.forEach((item) => {
+    if (findIngredientByUsage(item)) available.push(item.name)
+    else missing.push(item.name)
+  })
+  return { available, missing }
+}
+
+function findIngredientByUsage(usageItem) {
+  return state.ingredients.find((ingredient) => sameName(ingredient.name, usageItem.name))
+}
+
+function getUrgentIngredients() {
+  return state.ingredients
+    .filter((item) => item.expiryDate && daysUntil(item.expiryDate) <= 3)
+    .sort((a, b) => expiryValue(a.expiryDate) - expiryValue(b.expiryDate))
+}
+
+function createDish(input) {
+  const now = new Date().toISOString()
+  return {
+    id: crypto.randomUUID(),
+    name: input.name,
+    category: input.category || '',
+    mealTypes: input.mealTypes || ['lunch', 'dinner'],
+    ingredientUsages: input.ingredientUsages || [],
+    note: input.note || '',
+    imageData: input.imageData || '',
+    createdAt: now,
+    updatedAt: now
+  }
+}
+
+function createIngredient(input) {
+  const now = new Date().toISOString()
+  return {
+    id: crypto.randomUUID(),
+    name: input.name,
+    quantity: input.quantity || '',
+    unit: input.unit || '',
+    expiryDate: input.expiryDate || '',
+    note: input.note || '',
+    imageData: input.imageData || '',
+    color: input.color || randomColor(input.name),
+    createdAt: now,
+    updatedAt: now
+  }
+}
+
+function normalizeDishes(dishes) {
+  return dishes.map((dish) => ({
+    ...dish,
+    mealTypes: dish.mealTypes?.length ? dish.mealTypes : ['lunch', 'dinner'],
+    ingredientUsages: dish.ingredientUsages?.length
+      ? dish.ingredientUsages
+      : (dish.ingredients || []).map((name) => ({ ingredientId: '', name, quantity: '', unit: '' }))
+  }))
+}
+
+function usage(ingredient, quantity, unit) {
+  return {
+    ingredientId: ingredient?.id || '',
+    name: ingredient?.name || '',
+    quantity,
+    unit
+  }
+}
+
+function parseIngredientUsages(value) {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(/\s+/)
+      const name = parts[0]
+      const ingredient = state.ingredients.find((item) => sameName(item.name, name))
+      return {
+        ingredientId: ingredient?.id || '',
+        name,
+        quantity: parts[1] || '',
+        unit: parts.slice(2).join('') || ''
+      }
+    })
+}
+
+function loadAppTitle() {
+  els.appTitleInput.value = localStorage.getItem(TITLE_KEY) || '电子厨房'
+  updateDocumentTitle()
+}
+
+function updateAppTitle() {
+  const title = els.appTitleInput.value.trim() || '电子厨房'
+  localStorage.setItem(TITLE_KEY, title)
+  updateDocumentTitle()
+}
+
+function updateDocumentTitle() {
+  document.title = els.appTitleInput.value.trim() || '电子厨房'
 }
 
 function exportData() {
   const payload = {
     app: '电子厨房',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
+    title: els.appTitleInput.value.trim() || '电子厨房',
     dishes: state.dishes,
+    ingredients: state.ingredients,
     checkins: state.checkins
   }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -573,16 +843,19 @@ async function importData(event) {
   const file = event.target.files[0]
   if (!file) return
   try {
-    const text = await file.text()
-    const payload = JSON.parse(text)
-    if (!Array.isArray(payload.dishes) || !Array.isArray(payload.checkins)) {
-      throw new Error('Invalid backup')
-    }
+    const payload = JSON.parse(await file.text())
+    if (!Array.isArray(payload.dishes) || !Array.isArray(payload.checkins)) throw new Error('Invalid backup')
     if (!confirm('导入会覆盖当前本地数据，确定继续吗？')) return
     await clearStore(STORES.dishes)
+    await clearStore(STORES.ingredients)
     await clearStore(STORES.checkins)
     await Promise.all(payload.dishes.map((dish) => put(STORES.dishes, dish)))
+    await Promise.all((payload.ingredients || []).map((item) => put(STORES.ingredients, item)))
     await Promise.all(payload.checkins.map((record) => put(STORES.checkins, record)))
+    if (payload.title) {
+      els.appTitleInput.value = payload.title
+      updateAppTitle()
+    }
     showToast('备份已导入')
     await refresh()
   } catch (error) {
@@ -593,11 +866,22 @@ async function importData(event) {
   }
 }
 
-function parseIngredients(value) {
-  return value
-    .split(/[、,，\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean)
+function syncSelectedDate(value) {
+  state.recordDate = value || formatDate(new Date())
+  els.recordDate.value = state.recordDate
+  els.checkinDate.value = state.recordDate
+}
+
+async function imageFromEvent(event) {
+  const file = event.target.files[0]
+  if (!file) return ''
+  return fileToDataUrl(file)
+}
+
+function updateImagePreview(imageEl, hintEl, value) {
+  imageEl.src = value
+  imageEl.hidden = !value
+  hintEl.hidden = Boolean(value)
 }
 
 function fileToDataUrl(file) {
@@ -609,23 +893,43 @@ function fileToDataUrl(file) {
   })
 }
 
-async function setSelectedDate(value) {
-  if (!value) return
-  syncSelectedDate(value)
-  state.checkins = await getAll(STORES.checkins)
-  renderDishes()
-  renderRecords()
+function emptyState(title, text) {
+  return `
+    <div class="empty-state">
+      <h2>${escapeHtml(title)}</h2>
+      <p>${escapeHtml(text)}</p>
+    </div>
+  `
 }
 
-function syncSelectedDate(value) {
-  state.recordDate = value || formatDate(new Date())
-  els.checkinDate.value = state.recordDate
-  els.recordDate.value = state.recordDate
-  els.todayText.textContent = isToday(state.recordDate) ? prettyDate(state.recordDate) : `补记：${prettyDate(state.recordDate)}`
+function quantityText(item) {
+  return `${item.quantity || '-'}${item.unit || ''}`
 }
 
-function isToday(value) {
-  return value === formatDate(new Date())
+function expiryText(value) {
+  if (!value) return '未设置保质期'
+  const days = daysUntil(value)
+  if (days < 0) return `已过期 ${Math.abs(days)} 天`
+  if (days === 0) return '今天到期'
+  if (days === 1) return '明天到期'
+  return `${days}天后到期`
+}
+
+function expiryValue(value) {
+  return value ? new Date(`${value}T00:00:00`).getTime() : Number.POSITIVE_INFINITY
+}
+
+function daysUntil(value) {
+  if (!value) return Number.POSITIVE_INFINITY
+  const today = new Date(`${formatDate(new Date())}T00:00:00`)
+  const date = new Date(`${value}T00:00:00`)
+  return Math.round((date - today) / 86400000)
+}
+
+function addDays(date, days) {
+  const copy = new Date(date)
+  copy.setDate(copy.getDate() + days)
+  return formatDate(copy)
 }
 
 function formatDate(date) {
@@ -635,21 +939,35 @@ function formatDate(date) {
   return `${year}-${month}-${day}`
 }
 
-function prettyDate(date) {
-  const d = date instanceof Date ? date : new Date(`${date}T00:00:00`)
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
-}
-
 function mealLabel(key) {
   return MEALS.find((meal) => meal.key === key)?.label || ''
 }
 
-function daysBetween(a, b) {
-  return Math.abs(b.setHours(0, 0, 0, 0) - a.setHours(0, 0, 0, 0)) / 86400000
+function sortByPinyin(items) {
+  return [...items].sort((a, b) => comparePinyin(a.name, b.name))
+}
+
+function comparePinyin(a, b) {
+  return String(a).localeCompare(String(b), 'zh-Hans-CN')
+}
+
+function sameName(a, b) {
+  return String(a).trim().toLowerCase() === String(b).trim().toLowerCase()
+}
+
+function starsText(value) {
+  const rating = Math.min(5, Math.max(0, Number(value) || 0))
+  return `${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`
+}
+
+function randomColor(seed = '') {
+  const colors = ['#6ea577', '#d95a38', '#e8c569', '#8fa7c8', '#d78998']
+  const index = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0) % colors.length
+  return colors[index]
 }
 
 function escapeHtml(value) {
-  return String(value)
+  return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
