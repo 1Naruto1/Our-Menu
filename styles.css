@@ -1043,6 +1043,16 @@ h2 {
   min-width: 168px;
 }
 
+#ingredientQuantity,
+#ingredientUnit,
+#ingredientExpiry {
+  height: 46px;
+  min-height: 46px;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 46px;
+}
+
 .field input,
 .field textarea {
   width: 100%;
