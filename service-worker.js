@@ -1,4 +1,4 @@
-const CACHE_NAME = 'electronic-kitchen-kawaii-v6'
+const CACHE_NAME = 'electronic-kitchen-kawaii-v9'
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,8 @@ const ASSETS = [
   './app.js',
   './manifest.webmanifest',
   './assets/icon.svg',
+  './assets/app-icon-192.png',
+  './assets/app-icon-512.png',
   './assets/kawaii-bg.png',
   './assets/home-badge.png',
   './assets/rabbit-spatula.png',

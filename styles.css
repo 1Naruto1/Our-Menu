@@ -122,6 +122,7 @@ main,
   height: 72px;
   object-fit: contain;
   filter: drop-shadow(0 8px 14px rgba(139, 83, 79, 0.14));
+  transform: translateY(4px);
 }
 
 .brand-title-wrap {
@@ -268,10 +269,12 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 58px;
+  flex-direction: column;
+  gap: 3px;
+  height: 66px;
   color: var(--muted);
   background: transparent;
+  font-size: 13px;
 }
 
 .meal-tab.is-active {
@@ -844,6 +847,7 @@ h2 {
   .brand img {
     width: 58px;
     height: 58px;
+    transform: translateY(3px);
   }
 
   .app-title-input {
@@ -866,7 +870,6 @@ h2 {
 
   .meal-tab {
     height: 62px;
-    flex-direction: column;
     gap: 3px;
     font-size: 13px;
   }
